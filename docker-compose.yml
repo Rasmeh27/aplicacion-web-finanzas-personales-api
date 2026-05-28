@@ -1,0 +1,63 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: smartwallet-db
+    environment:
+      POSTGRES_DB: smartwallet
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d smartwallet"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: smartwallet-cache
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: ../../infrastructure/docker/Dockerfile.api
+    container_name: smartwallet-api
+    ports:
+      - '3001:3001'
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: ../../infrastructure/docker/Dockerfile.web
+    container_name: smartwallet-web
+    ports:
+      - '3000:3000'
+    env_file:
+      - apps/web/.env.local.example
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  redis_data:
