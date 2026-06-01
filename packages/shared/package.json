@@ -1,0 +1,21 @@
+{
+  "name": "@smartwallet/shared",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./constants": "./constants/index.ts",
+    "./types": "./types/index.ts",
+    "./validations": "./validations/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json --noEmit",
+    "lint": "echo \"lint placeholder\" && exit 0",
+    "test": "echo \"no tests\" && exit 0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
