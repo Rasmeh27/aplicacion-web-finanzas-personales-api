@@ -8,6 +8,7 @@ node_modules/
 dist/
 build/
 out/
+apps/api/src/**/*.js
 
 # Environment files
 .env
@@ -33,3 +34,6 @@ coverage/
 
 # Turbo
 .turbo
+
+# Local scratch files
+tmp/

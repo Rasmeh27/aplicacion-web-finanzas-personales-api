@@ -1,6 +1,6 @@
 import { IsEnum, IsNumber, IsString, IsDateString, IsOptional, IsUUID, Min } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
-import { TransactionType, RecurrenceFrequency } from '../entities/transaction.entity';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { TransactionType } from '../entities/transaction.entity';
 
 export class CreateTransactionDto {
   @ApiProperty({ enum: TransactionType })
@@ -12,26 +12,23 @@ export class CreateTransactionDto {
   @Min(0.01)
   amount: number;
 
-  @ApiProperty({ example: 'Salario mensual' })
+  @ApiPropertyOptional({ example: 'DOP' })
+  @IsOptional()
   @IsString()
-  description: string;
+  currency?: string;
 
-  @ApiProperty({ example: '2026-05-01' })
+  @ApiPropertyOptional({ example: 'Salario mensual' })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional({ example: '2026-05-01' })
+  @IsOptional()
   @IsDateString()
-  date: string;
+  date?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
   @IsUUID()
   categoryId?: string;
-
-  @ApiProperty({ enum: RecurrenceFrequency, required: false })
-  @IsOptional()
-  @IsEnum(RecurrenceFrequency)
-  recurrence?: RecurrenceFrequency;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  notes?: string;
 }

@@ -1,15 +1,23 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Request } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Request, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { UpdateUserPreferencesDto } from './dto/update-user.dto';
 import { UserService } from './user.service';
 
 @ApiTags('user')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('user')
 export class UserController {
   constructor(private readonly service: UserService) {}
 
-  @Get()
+  @Get('me')
   findAll(@Request() req: any) {
-    return this.service.findAll(req.user?.id);
+    return this.service.findAll(req.user.id);
+  }
+
+  @Patch('me/preferences')
+  updatePreferences(@Request() req: any, @Body() dto: UpdateUserPreferencesDto) {
+    return this.service.updatePreferences(req.user.id, dto);
   }
 }

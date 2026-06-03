@@ -1,74 +1,106 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
-import * as bcrypt from 'bcrypt';
+import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import { SupabaseService } from '../../integrations/supabase/supabase.service';
 import { UserService } from '../user/user.service';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { User } from '../user/entities/user.entity';
 
 @Injectable()
 export class AuthService {
   constructor(
+    private readonly supabase: SupabaseService,
     private readonly userService: UserService,
-    private readonly jwtService: JwtService,
-    private readonly config: ConfigService,
   ) {}
 
-  async register(dto: any) {
-    const existing = await this.userService.findByEmail(dto.email);
-    if (existing) throw new ConflictException('Email already registered');
+  async register(dto: RegisterDto) {
+    const fullName = this.userService.buildFullName(dto.firstName, dto.lastName, dto.fullName);
+    const { data, error } = await this.supabase.client.auth.signUp({
+      email: dto.email,
+      password: dto.password,
+      options: {
+        data: {
+          full_name: fullName,
+        },
+      },
+    });
 
-    const passwordHash = await bcrypt.hash(dto.password, 12);
-    const user = await this.userService.create({ ...dto, passwordHash });
+    if (error) {
+      if (/already|registered|exists/i.test(error.message)) {
+        throw new ConflictException('Email already registered');
+      }
+      throw new BadRequestException(error.message);
+    }
 
-    return this.generateTokens(user);
+    if (!data.user) {
+      throw new BadRequestException('Registration failed');
+    }
+
+    const profile = await this.userService.upsertProfile(data.user.id, {
+      fullName,
+      primaryCurrency: dto.primaryCurrency ?? dto.currency,
+      monthlyIncomeEstimate: dto.monthlyIncomeEstimate,
+      monthlySavingTargetPct: dto.monthlySavingTargetPct,
+    });
+
+    return this.formatAuthResponse(data.session, data.user, profile);
   }
 
-  async login(dto: any) {
-    const user = await this.userService.findByEmailWithPassword(dto.email);
-    if (!user) throw new UnauthorizedException('Invalid credentials');
+  async login(dto: LoginDto) {
+    const { data, error } = await this.supabase.client.auth.signInWithPassword({
+      email: dto.email,
+      password: dto.password,
+    });
 
-    const isValid = await bcrypt.compare(dto.password, user.passwordHash);
-    if (!isValid) throw new UnauthorizedException('Invalid credentials');
+    if (error || !data.user || !data.session) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
-    await this.userService.updateLastLogin(user.id);
-    return this.generateTokens(user);
+    const profile = await this.userService.upsertProfile(data.user.id);
+    return this.formatAuthResponse(data.session, data.user, profile);
   }
 
-  async refreshToken(token: string) {
-    try {
-      const payload = this.jwtService.verify(token, {
-        secret: this.config.get('JWT_REFRESH_SECRET'),
-      });
-      const user = await this.userService.findById(payload.sub);
-      return this.generateTokens(user);
-    } catch {
+  async refreshToken(refreshToken: string) {
+    const { data, error } = await this.supabase.client.auth.refreshSession({
+      refresh_token: refreshToken,
+    });
+
+    if (error || !data.user || !data.session) {
       throw new UnauthorizedException('Invalid refresh token');
     }
+
+    const profile = await this.userService.upsertProfile(data.user.id);
+    return this.formatAuthResponse(data.session, data.user, profile);
   }
 
   async forgotPassword(email: string) {
-    // TODO: generate reset token & send email
+    await this.supabase.client.auth.resetPasswordForEmail(email);
     return { message: 'If that email exists, a reset link was sent.' };
   }
 
-  async resetPassword(dto: any) {
+  async resetPassword(dto: ResetPasswordDto) {
     // TODO: validate reset token & update password
     return { message: 'Password updated successfully.' };
   }
 
   async logout(refreshToken: string) {
-    // TODO: blacklist refresh token in Redis
-    return;
+    // TODO: revoke refresh token with Supabase admin/service role when available.
+    return { message: 'Logged out successfully.' };
   }
 
-  private generateTokens(user: any) {
-    const payload = { sub: user.id, email: user.email };
+  private formatAuthResponse(session: Session | null, user: SupabaseUser, profile: User) {
     return {
-      accessToken: this.jwtService.sign(payload),
-      refreshToken: this.jwtService.sign(payload, {
-        secret: this.config.get('JWT_REFRESH_SECRET'),
-        expiresIn: this.config.get('JWT_REFRESH_EXPIRES_IN', '7d'),
-      }),
-      user: { id: user.id, email: user.email, firstName: user.firstName },
+      accessToken: session?.access_token ?? null,
+      refreshToken: session?.refresh_token ?? null,
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: profile.fullName,
+        primaryCurrency: profile.primaryCurrency,
+        monthlyIncomeEstimate: Number(profile.monthlyIncomeEstimate),
+        monthlySavingTargetPct: Number(profile.monthlySavingTargetPct),
+      },
     };
   }
 }

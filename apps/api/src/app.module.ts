@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { SupabaseModule } from '@integrations/supabase/supabase.module';
 
 // Domain modules
 import { AuthModule }             from '@modules/auth/auth.module';
@@ -24,7 +25,10 @@ import { AuditModule }            from '@modules/audit/audit.module';
 @Module({
   imports: [
     // Config
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['apps/api/.env', '.env', '../../.env'],
+    }),
 
     // Database
     TypeOrmModule.forRootAsync({
@@ -34,13 +38,18 @@ import { AuditModule }            from '@modules/audit/audit.module';
         type: 'postgres',
         url: config.get('DATABASE_URL'),
         autoLoadEntities: true,
-        synchronize: config.get('NODE_ENV') === 'development',
+        synchronize: false,
         logging: config.get('NODE_ENV') === 'development',
+        ssl:
+          config.get<string>('DATABASE_SSL') === 'true'
+            ? { rejectUnauthorized: false }
+            : false,
       }),
     }),
 
     // Rate limiting
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
+    SupabaseModule,
 
     // Domain modules
     AuthModule,

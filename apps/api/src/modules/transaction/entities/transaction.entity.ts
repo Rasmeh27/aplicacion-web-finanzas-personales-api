@@ -1,53 +1,51 @@
 import {
   Entity, PrimaryGeneratedColumn, Column,
-  CreateDateColumn, UpdateDateColumn, ManyToOne, Index,
+  CreateDateColumn, UpdateDateColumn, ManyToOne, Index, JoinColumn,
 } from 'typeorm';
 import { User }     from '../../user/entities/user.entity';
 import { Category } from '../../category/entities/category.entity';
 
 export enum TransactionType { INCOME = 'income', EXPENSE = 'expense' }
-export enum RecurrenceFrequency { NONE = 'none', DAILY = 'daily', WEEKLY = 'weekly', MONTHLY = 'monthly', YEARLY = 'yearly' }
 
-@Entity('transactions')
+@Entity('movements')
 @Index(['userId', 'date'])
-@Index(['userId', 'type'])
+@Index(['userId', 'type', 'date'])
 export class Transaction {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({ name: 'user_id', type: 'uuid' })
   userId: string;
 
   @ManyToOne(() => User, (u) => u.transactions, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user_id' })
   user: User;
 
   @Column({ type: 'enum', enum: TransactionType })
   type: TransactionType;
 
-  @Column({ type: 'decimal', precision: 12, scale: 2 })
+  @Column({ type: 'decimal', precision: 14, scale: 2 })
   amount: number;
 
-  @Column()
+  @Column({ type: 'varchar', length: 3, default: 'DOP' })
+  currency: string;
+
+  @Column({ type: 'text', nullable: true })
   description: string;
 
-  @Column({ type: 'date' })
+  @Column({ name: 'movement_date', type: 'date' })
   date: Date;
 
-  @Column({ nullable: true })
+  @Column({ name: 'category_id', type: 'uuid', nullable: true })
   categoryId: string;
 
   @ManyToOne(() => Category, { nullable: true })
+  @JoinColumn({ name: 'category_id' })
   category: Category;
 
-  @Column({ type: 'enum', enum: RecurrenceFrequency, default: RecurrenceFrequency.NONE })
-  recurrence: RecurrenceFrequency;
-
-  @Column({ nullable: true })
-  notes: string;
-
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
 }

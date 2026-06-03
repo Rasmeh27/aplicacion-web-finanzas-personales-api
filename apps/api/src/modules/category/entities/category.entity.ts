@@ -1,12 +1,27 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 
-export enum CategoryType { INCOME = 'income', EXPENSE = 'expense', BOTH = 'both' }
+export enum CategoryType { INCOME = 'income', EXPENSE = 'expense' }
 
 @Entity('categories')
 export class Category {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ name: 'user_id', type: 'uuid' })
+  userId: string;
+
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user_id' })
+  user: User;
 
   @Column()
   name: string;
@@ -20,12 +35,12 @@ export class Category {
   @Column({ nullable: true })
   color: string;
 
-  @Column({ default: false })
-  isSystem: boolean;  // predefined vs user-created
+  @Column({ name: 'is_default', default: false })
+  isDefault: boolean;
 
-  @Column({ nullable: true })
-  userId: string;     // null = system-wide predefined
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  createdAt: Date;
 
-  @ManyToOne(() => User, { nullable: true })
-  user: User;
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  updatedAt: Date;
 }

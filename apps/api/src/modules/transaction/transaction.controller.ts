@@ -2,9 +2,11 @@ import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Requ
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { TransactionService }    from './transaction.service';
 import { CreateTransactionDto }  from './dto/create-transaction.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('transactions')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('transactions')
 export class TransactionController {
   constructor(private readonly service: TransactionService) {}
