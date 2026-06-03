@@ -1,7 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindManyOptions, FindOptionsWhere, Repository } from 'typeorm';
 import { BadRequestException } from '@nestjs/common';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import {
   Transaction,
   TransactionType,
@@ -16,6 +17,13 @@ describe('TransactionService - Filtering (CU-011)', () => {
 
   const userId = 'user-123';
   const categoryId = '550e8400-e29b-41d4-a716-446655440000';
+
+  const getFindAndCountOptions = (): FindManyOptions<Transaction> =>
+    (repo.findAndCount as jest.MockedFunction<typeof repo.findAndCount>).mock
+      .calls[0][0];
+
+  const getFindAndCountWhere = (): FindOptionsWhere<Transaction> =>
+    getFindAndCountOptions().where as FindOptionsWhere<Transaction>;
 
   const mockTransaction = (
     overrides: Partial<Transaction> = {},
@@ -121,8 +129,8 @@ describe('TransactionService - Filtering (CU-011)', () => {
       const result = await service.findAll(userId, filters);
 
       expect(repo.findAndCount).toHaveBeenCalled();
-      const callArgs = (repo.findAndCount as jest.Mock).mock.calls[0][0];
-      expect(callArgs.where.date).toBeDefined();
+      const where = getFindAndCountWhere();
+      expect(where.date).toBeDefined();
       expect(result.items).toHaveLength(1);
     });
 
@@ -156,8 +164,8 @@ describe('TransactionService - Filtering (CU-011)', () => {
       };
       await service.findAll(userId, filters);
 
-      const callArgs = (repo.findAndCount as jest.Mock).mock.calls[0][0];
-      expect(callArgs.where.date).toBeDefined();
+      const where = getFindAndCountWhere();
+      expect(where.date).toBeDefined();
     });
 
     it('debería filtrar hasta endDate si solo endDate se proporciona', async () => {
@@ -168,8 +176,8 @@ describe('TransactionService - Filtering (CU-011)', () => {
       };
       await service.findAll(userId, filters);
 
-      const callArgs = (repo.findAndCount as jest.Mock).mock.calls[0][0];
-      expect(callArgs.where.date).toBeDefined();
+      const where = getFindAndCountWhere();
+      expect(where.date).toBeDefined();
     });
   });
 
@@ -190,10 +198,10 @@ describe('TransactionService - Filtering (CU-011)', () => {
       };
       const result = await service.findAll(userId, filters);
 
-      const callArgs = (repo.findAndCount as jest.Mock).mock.calls[0][0];
-      expect(callArgs.where.type).toBe(TransactionType.EXPENSE);
-      expect(callArgs.where.categoryId).toBe(categoryId);
-      expect(callArgs.where.date).toBeDefined();
+      const where = getFindAndCountWhere();
+      expect(where.type).toBe(TransactionType.EXPENSE);
+      expect(where.categoryId).toBe(categoryId);
+      expect(where.date).toBeDefined();
       expect(result.items).toHaveLength(1);
     });
   });
@@ -319,8 +327,8 @@ describe('TransactionService - Filtering (CU-011)', () => {
 
       await service.findAll(userId, {});
 
-      const callArgs = (repo.findAndCount as jest.Mock).mock.calls[0][0];
-      expect(callArgs.where.userId).toBe(userId);
+      const where = getFindAndCountWhere();
+      expect(where.userId).toBe(userId);
     });
   });
 });
