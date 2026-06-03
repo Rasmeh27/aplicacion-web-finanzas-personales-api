@@ -2,12 +2,14 @@ import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Requ
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { TransactionService }    from './transaction.service';
 import { CreateTransactionDto }  from './dto/create-transaction.dto';
+import { ListTransactionsQueryDto } from './dto/list-transactions-query.dto';
+import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
-@ApiTags('transactions')
+@ApiTags('movements')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-@Controller('transactions')
+@Controller('movements')
 export class TransactionController {
   constructor(private readonly service: TransactionService) {}
 
@@ -17,7 +19,7 @@ export class TransactionController {
   }
 
   @Get()
-  findAll(@Request() req: any, @Query() query: any) {
+  findAll(@Request() req: any, @Query() query: ListTransactionsQueryDto) {
     return this.service.findAll(req.user.id, query);
   }
 
@@ -32,7 +34,7 @@ export class TransactionController {
   }
 
   @Put(':id')
-  update(@Request() req: any, @Param('id') id: string, @Body() dto: Partial<CreateTransactionDto>) {
+  update(@Request() req: any, @Param('id') id: string, @Body() dto: UpdateTransactionDto) {
     return this.service.update(req.user.id, id, dto);
   }
 
