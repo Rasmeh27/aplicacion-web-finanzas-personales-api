@@ -1,32 +1,51 @@
 import {
-  Entity, PrimaryGeneratedColumn, Column,
-  ManyToOne, OneToMany, CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  CreateDateColumn,
+  UpdateDateColumn,
+  JoinColumn,
+  Index,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
+import { Category } from '../../category/entities/category.entity';
 
 @Entity('budgets')
+@Index(['userId', 'periodMonth'])
 export class Budget {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({ name: 'user_id' })
   userId: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column()
-  month: number;  // 1-12
+  @Column({ name: 'category_id', nullable: true })
+  categoryId: string;
 
-  @Column()
-  year: number;
+  @ManyToOne(() => Category, { nullable: true })
+  @JoinColumn({ name: 'category_id' })
+  category: Category;
 
-  @Column({ type: 'decimal', precision: 12, scale: 2 })
-  totalAmount: number;
+  @Column({ type: 'text' })
+  name: string;
 
-  @Column({ default: true })
-  isActive: boolean;
+  @Column({ name: 'period_month', type: 'date' })
+  periodMonth: string;
 
-  @CreateDateColumn()
+  @Column({ name: 'limit_amount', type: 'decimal', precision: 12, scale: 2 })
+  limitAmount: number;
+
+  @Column({ default: 'DOP' })
+  currency: string;
+
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
 }
