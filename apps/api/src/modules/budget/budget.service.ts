@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { CreateCategoryBudgetDto } from './dto/create-category-budget.dto';
 import { CreateBudgetDto } from './dto/create-budget.dto';
 import { Budget } from './entities/budget.entity';
+import { CreateCategoryBudgetUseCase } from './use-cases/create-category-budget.use-case';
 import { CreateMonthlyBudgetUseCase } from './use-cases/create-monthly-budget.use-case';
 
 @Injectable()
@@ -11,10 +13,15 @@ export class BudgetService {
     @InjectRepository(Budget)
     private readonly repo: Repository<Budget>,
     private readonly createMonthlyBudgetUseCase: CreateMonthlyBudgetUseCase,
+    private readonly createCategoryBudgetUseCase: CreateCategoryBudgetUseCase,
   ) {}
 
   create(userId: string, dto: CreateBudgetDto): Promise<Budget> {
     return this.createMonthlyBudgetUseCase.execute(userId, dto);
+  }
+
+  createByCategory(userId: string, dto: CreateCategoryBudgetDto): Promise<Budget> {
+    return this.createCategoryBudgetUseCase.execute(userId, dto);
   }
 
   findAll(userId: string): Promise<Budget[]> {

@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { BudgetService } from './budget.service';
+import { CreateCategoryBudgetDto } from './dto/create-category-budget.dto';
 import { CreateBudgetDto } from './dto/create-budget.dto';
 
 @ApiTags('budgets')
@@ -27,6 +28,19 @@ export class BudgetController {
   })
   create(@Request() req: any, @Body() dto: CreateBudgetDto) {
     return this.service.create(this.getUserId(req), dto);
+  }
+
+  @Post('category')
+  @ApiOperation({
+    summary: 'Crear presupuesto por categoria',
+    description: 'Crea un presupuesto mensual para una categoria de gasto del usuario.',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Presupuesto por categoria creado correctamente',
+  })
+  createByCategory(@Request() req: any, @Body() dto: CreateCategoryBudgetDto) {
+    return this.service.createByCategory(this.getUserId(req), dto);
   }
 
   @Get()
