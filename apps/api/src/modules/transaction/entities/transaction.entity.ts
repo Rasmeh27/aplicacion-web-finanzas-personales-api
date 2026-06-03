@@ -1,53 +1,64 @@
 import {
-  Entity, PrimaryGeneratedColumn, Column,
-  CreateDateColumn, UpdateDateColumn, ManyToOne, Index,
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  Index,
+  JoinColumn,
 } from 'typeorm';
-import { User }     from '../../user/entities/user.entity';
+import { User } from '../../user/entities/user.entity';
 import { Category } from '../../category/entities/category.entity';
 
-export enum TransactionType { INCOME = 'income', EXPENSE = 'expense' }
-export enum RecurrenceFrequency { NONE = 'none', DAILY = 'daily', WEEKLY = 'weekly', MONTHLY = 'monthly', YEARLY = 'yearly' }
+export enum TransactionType {
+  INCOME = 'income',
+  EXPENSE = 'expense',
+}
 
-@Entity('transactions')
+@Entity('movements')
 @Index(['userId', 'date'])
 @Index(['userId', 'type'])
 export class Transaction {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({ name: 'user_id' })
   userId: string;
 
-  @ManyToOne(() => User, (u) => u.transactions, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, (user) => user.transactions, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column({ type: 'enum', enum: TransactionType })
+  @Column({
+    type: 'enum',
+    enum: TransactionType,
+    enumName: 'movement_type',
+  })
   type: TransactionType;
 
   @Column({ type: 'decimal', precision: 12, scale: 2 })
   amount: number;
 
-  @Column()
+  @Column({ default: 'DOP' })
+  currency: string;
+
+  @Column({ type: 'text', nullable: true })
   description: string;
 
-  @Column({ type: 'date' })
-  date: Date;
+  @Column({ name: 'movement_date', type: 'date' })
+  date: string;
 
-  @Column({ nullable: true })
+  @Column({ name: 'category_id', nullable: true })
   categoryId: string;
 
   @ManyToOne(() => Category, { nullable: true })
+  @JoinColumn({ name: 'category_id' })
   category: Category;
 
-  @Column({ type: 'enum', enum: RecurrenceFrequency, default: RecurrenceFrequency.NONE })
-  recurrence: RecurrenceFrequency;
-
-  @Column({ nullable: true })
-  notes: string;
-
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }

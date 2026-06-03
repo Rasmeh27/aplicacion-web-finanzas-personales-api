@@ -14,6 +14,17 @@
     "migration:revert": "typeorm migration:revert",
     "seed": "ts-node src/database/seeds/index.ts"
   },
+  "jest": {
+    "moduleFileExtensions": ["js", "json", "ts"],
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "collectCoverageFrom": ["**/*.(t|j)s"],
+    "coverageDirectory": "../coverage",
+    "testEnvironment": "node"
+  },
   "dependencies": {
     "@nestjs/bull": "^10.0.0",
     "@nestjs/common": "^10.0.0",
