@@ -55,13 +55,13 @@ Tambien valide que un usuario no pueda crear dos presupuestos mensuales generale
 
 ## Archivos tocados
 
-- `apps/api/src/modules/budget/entities/budget.entity.ts`
-- `apps/api/src/modules/budget/dto/create-budget.dto.ts`
-- `apps/api/src/modules/budget/budget.controller.ts`
-- `apps/api/src/modules/budget/budget.service.ts`
-- `apps/api/src/modules/budget/budget.module.ts`
-- `apps/api/src/modules/budget/use-cases/create-monthly-budget.use-case.ts`
-- `apps/api/src/modules/budget/budget.service.spec.ts`
+- `apps/backend/src/modules/planning/entities/budget.entity.ts`
+- `apps/backend/src/modules/planning/dto/create-budget.dto.ts`
+- `apps/backend/src/modules/planning/budget.controller.ts`
+- `apps/backend/src/modules/planning/budget.service.ts`
+- `apps/backend/src/modules/planning/budget.module.ts`
+- `apps/backend/src/modules/planning/use-cases/create-monthly-budget.use-case.ts`
+- `apps/backend/src/modules/planning/budget.service.spec.ts`
 
 ## Pruebas
 

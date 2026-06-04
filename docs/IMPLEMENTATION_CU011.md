@@ -12,7 +12,7 @@ GET /api/v1/transactions
 
 ## Archivos modificados
 
-### `apps/api/src/modules/transaction/dto/filter-transaction.dto.ts`
+### `apps/backend/src/modules/movements/dto/filter-transaction.dto.ts`
 
 Cree un DTO nuevo para validar los query params del endpoint. Los filtros soportados son:
 
@@ -25,7 +25,7 @@ Cree un DTO nuevo para validar los query params del endpoint. Los filtros soport
 
 Tambien agregue una validacion para evitar que `startDate` sea mayor que `endDate`.
 
-### `apps/api/src/modules/transaction/entities/transaction.entity.ts`
+### `apps/backend/src/modules/movements/entities/transaction.entity.ts`
 
 Mapee la entidad `Transaction` a la tabla real de Supabase:
 
@@ -38,7 +38,7 @@ Mapee la entidad `Transaction` a la tabla real de Supabase:
 
 La tabla real tambien tiene `currency`, por eso se agrego al DTO de creacion y se usa `DOP` por defecto si no viene en el request.
 
-### `apps/api/src/modules/transaction/transaction.controller.ts`
+### `apps/backend/src/modules/movements/transaction.controller.ts`
 
 Actualice el metodo `findAll` para recibir `FilterTransactionDto` en vez de un `query: any`.
 
@@ -52,11 +52,11 @@ Con esto Nest puede transformar y validar los parametros antes de llegar al serv
 
 Como el proyecto todavia no tiene un guard JWT conectado al request, deje soporte para `X-User-Id` en desarrollo. En produccion no se acepta ese header y debe existir un usuario autenticado en `req.user`.
 
-### `apps/api/src/modules/transaction/transaction.service.ts`
+### `apps/backend/src/modules/movements/transaction.service.ts`
 
 El service queda como entrada del modulo y delega el filtrado al caso de uso de CU-011.
 
-### `apps/api/src/modules/transaction/use-cases/filter-transactions.use-case.ts`
+### `apps/backend/src/modules/movements/use-cases/filter-transactions.use-case.ts`
 
 Cree este caso de uso para que la logica de CU-011 quede ubicada en un archivo propio. Aqui se arma el `where` de TypeORM segun los filtros recibidos. La consulta usa la tabla existente `movements` y siempre filtra por `userId`, para que un usuario solo vea sus propios movimientos.
 
@@ -72,7 +72,7 @@ La respuesta ahora incluye metadata de paginacion:
 }
 ```
 
-### `apps/api/src/modules/transaction/transaction.service.spec.ts`
+### `apps/backend/src/modules/movements/transaction.service.spec.ts`
 
 Agregue pruebas unitarias para validar:
 
@@ -120,7 +120,7 @@ La validacion del rango de fechas se hace en el DTO y tambien se verifica en el 
 Para validar esta parte se puede ejecutar:
 
 ```bash
-cd apps/api
+cd apps/backend
 npm test -- --runInBand transaction.service.spec.ts
 npm run build
 ```

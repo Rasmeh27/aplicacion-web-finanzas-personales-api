@@ -60,12 +60,12 @@ Tambien valide que un usuario no pueda crear dos presupuestos para la misma cate
 
 ## Archivos tocados
 
-- `apps/api/src/modules/budget/dto/create-category-budget.dto.ts`
-- `apps/api/src/modules/budget/use-cases/create-category-budget.use-case.ts`
-- `apps/api/src/modules/budget/budget.controller.ts`
-- `apps/api/src/modules/budget/budget.service.ts`
-- `apps/api/src/modules/budget/budget.module.ts`
-- `apps/api/src/modules/budget/budget.service.spec.ts`
+- `apps/backend/src/modules/planning/dto/create-category-budget.dto.ts`
+- `apps/backend/src/modules/planning/use-cases/create-category-budget.use-case.ts`
+- `apps/backend/src/modules/planning/budget.controller.ts`
+- `apps/backend/src/modules/planning/budget.service.ts`
+- `apps/backend/src/modules/planning/budget.module.ts`
+- `apps/backend/src/modules/planning/budget.service.spec.ts`
 
 ## Pruebas
 

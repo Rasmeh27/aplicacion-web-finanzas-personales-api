@@ -1,14 +1,15 @@
 {
   "name": "smartwallet",
   "private": true,
+  "packageManager": "npm@11.13.0",
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",
-    "db:migrate": "cd apps/api && npm run migration:run",
-    "db:seed": "cd apps/api && npm run seed"
+    "db:migrate": "cd apps/backend && npm run migration:run",
+    "db:seed": "cd apps/backend && npm run seed"
   },
   "devDependencies": {
     "turbo": "^2.0.0",

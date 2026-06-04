@@ -17,8 +17,8 @@ Plataforma Web de Finanzas Personales con AI Assistant
 ```
 smartwallet/
 ├── apps/
-│   ├── web/          # Next.js (App Router)
-│   └── api/          # NestJS REST API
+│   ├── backend/      # Backend - NestJS REST API
+│   └── frontend/     # Frontend - Next.js (App Router)
 ├── packages/
 │   └── shared/       # Types, constants, validations compartidas
 ├── infrastructure/
@@ -31,26 +31,16 @@ smartwallet/
     └── decisions/    # ADRs
 ```
 
-## Módulos del API (NestJS)
+## Módulos
 
-| Módulo              | Responsabilidad                              |
-|---------------------|----------------------------------------------|
-| `auth`              | Registro, login, JWT, MFA, recuperación      |
-| `user`              | Perfil de usuario y preferencias             |
-| `financial-profile` | Configuración financiera personal            |
-| `transaction`       | CRUD de ingresos y gastos                    |
-| `category`          | Categorías predefinidas y personalizadas     |
-| `budget`            | Presupuestos mensuales y alertas             |
-| `goal`              | Metas financieras y seguimiento              |
-| `debt`              | Control de deudas y vencimientos             |
-| `health-snapshot`   | Índice interno de salud financiera           |
-| `report`            | Generación de reportes                       |
-| `ai-assistant`      | Chat contextual con guardrails               |
-| `investment`        | Portafolio manual (Premium)                  |
-| `watchlist`         | Seguimiento de activos (Premium)             |
-| `news`              | Noticias financieras autorizadas (Premium)   |
-| `notification`      | Alertas in-app y correo                      |
-| `audit`             | Trazabilidad y cumplimiento                  |
+| Módulo | Nombre                     |
+|--------|----------------------------|
+| 1      | Cuenta y perfil            |
+| 2      | Movimientos                |
+| 3      | Planificación              |
+| 4      | Dashboard y reportes       |
+| 5      | Asistente y alertas        |
+| 6      | Inversión U.S Stock Market |
 
 ## Inicio rápido
 
@@ -64,7 +54,7 @@ npm install
 
 # 3. Copiar variables de entorno
 cp .env.example .env
-cp apps/web/.env.local.example apps/web/.env.local
+cp apps/frontend/.env.local.example apps/frontend/.env.local
 
 # 4. Levantar servicios (DB + Redis)
 docker-compose up postgres redis -d
@@ -82,16 +72,12 @@ Frontend:          http://localhost:3000
 
 ## Módulos del MVP (Fase 1)
 
-- [x] Autenticación y perfil
-- [x] Gestión de ingresos y gastos
-- [x] Categorías
-- [ ] Dashboard financiero
-- [ ] Presupuestos
-- [ ] Metas
-- [ ] Control de deudas
-- [ ] Índice de salud financiera
-- [ ] Reportes básicos
-- [ ] AI Assistant básico
+- [x] Cuenta y perfil
+- [x] Movimientos
+- [x] Planificación
+- [ ] Dashboard y reportes
+- [ ] Asistente y alertas
+- [ ] Inversión U.S Stock Market
 
 ## Integrantes
 
