@@ -17,8 +17,8 @@ Plataforma Web de Finanzas Personales con AI Assistant
 ```
 smartwallet/
 ├── apps/
-│   ├── web/          # Next.js (App Router)
-│   └── api/          # NestJS REST API
+│   ├── backend/      # Backend - NestJS REST API
+│   └── frontend/     # Frontend - Next.js (App Router)
 ├── packages/
 │   └── shared/       # Types, constants, validations compartidas
 ├── infrastructure/
@@ -40,7 +40,7 @@ smartwallet/
 | 3      | Planificación                               |
 | 4      | Dashboard y reportes                        |
 | 5      | Asistente y alertas                         |
-| 6      | Inversión U.S Stock Market (plan premium)   |
+| 6      | Inversión U.S Stock Market                  |
 
 ## Inicio rápido
 
@@ -54,7 +54,7 @@ npm install
 
 # 3. Copiar variables de entorno
 cp .env.example .env
-cp apps/web/.env.local.example apps/web/.env.local
+cp apps/frontend/.env.local.example apps/frontend/.env.local
 
 # 4. Levantar servicios (DB + Redis)
 docker-compose up postgres redis -d
@@ -77,7 +77,7 @@ Frontend:          http://localhost:3000
 - [x] Planificación
 - [ ] Dashboard y reportes
 - [ ] Asistente y alertas
-- [ ] Inversión U.S Stock Market (plan premium)
+- [ ] Inversión U.S Stock Market
 
 ## Integrantes
 
