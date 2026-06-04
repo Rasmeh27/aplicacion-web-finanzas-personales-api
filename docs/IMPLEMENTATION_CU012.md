@@ -60,7 +60,7 @@ Tambien valide que un usuario no pueda crear dos presupuestos mensuales generale
 - `apps/backend/src/modules/planning/budget.controller.ts`
 - `apps/backend/src/modules/planning/budget.service.ts`
 - `apps/backend/src/modules/planning/budget.module.ts`
-- `apps/backend/src/modules/planning/use-cases/create-monthly-budget.use-case.ts`
+- `apps/backend/src/modules/planning/use-cases/cu-012-create-monthly-budget.use-case.ts`
 - `apps/backend/src/modules/planning/budget.service.spec.ts`
 
 ## Pruebas

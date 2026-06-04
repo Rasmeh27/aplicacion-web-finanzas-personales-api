@@ -3,11 +3,13 @@ import {
   Controller,
   Get,
   Post,
+  Query,
   Request,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { BudgetService } from './budget.service';
+import { BudgetProgressQueryDto } from './dto/budget-progress-query.dto';
 import { CreateCategoryBudgetDto } from './dto/create-category-budget.dto';
 import { CreateBudgetDto } from './dto/create-budget.dto';
 
@@ -41,6 +43,19 @@ export class BudgetController {
   })
   createByCategory(@Request() req: any, @Body() dto: CreateCategoryBudgetDto) {
     return this.service.createByCategory(this.getUserId(req), dto);
+  }
+
+  @Get('progress')
+  @ApiOperation({
+    summary: 'Ver avance del presupuesto',
+    description: 'Consulta cuanto se ha gastado y cuanto queda disponible en los presupuestos del mes.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Avance del presupuesto consultado correctamente',
+  })
+  viewProgress(@Request() req: any, @Query() query: BudgetProgressQueryDto) {
+    return this.service.viewProgress(this.getUserId(req), query.year, query.month);
   }
 
   @Get()

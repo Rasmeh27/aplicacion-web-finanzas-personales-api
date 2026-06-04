@@ -56,7 +56,7 @@ Como el proyecto todavia no tiene un guard JWT conectado al request, deje soport
 
 El service queda como entrada del modulo y delega el filtrado al caso de uso de CU-011.
 
-### `apps/backend/src/modules/movements/use-cases/filter-transactions.use-case.ts`
+### `apps/backend/src/modules/movements/use-cases/cu-011-filter-movements.use-case.ts`
 
 Cree este caso de uso para que la logica de CU-011 quede ubicada en un archivo propio. Aqui se arma el `where` de TypeORM segun los filtros recibidos. La consulta usa la tabla existente `movements` y siempre filtra por `userId`, para que un usuario solo vea sus propios movimientos.
 

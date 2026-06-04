@@ -5,16 +5,19 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { IsNull, Repository } from 'typeorm';
 import { Category, CategoryType } from './entities/category.entity';
 import { Budget } from './entities/budget.entity';
+import { Transaction, TransactionType } from '../movements/entities/transaction.entity';
 import { BudgetService } from './budget.service';
-import { CreateCategoryBudgetUseCase } from './use-cases/create-category-budget.use-case';
-import { CreateMonthlyBudgetUseCase } from './use-cases/create-monthly-budget.use-case';
+import { CreateCategoryBudgetUseCase } from './use-cases/cu-013-create-category-budget.use-case';
+import { CreateMonthlyBudgetUseCase } from './use-cases/cu-012-create-monthly-budget.use-case';
+import { ViewBudgetProgressUseCase } from './use-cases/cu-014-view-budget-progress.use-case';
 import { CreateBudgetDto } from './dto/create-budget.dto';
 import { CreateCategoryBudgetDto } from './dto/create-category-budget.dto';
 
-describe('BudgetService - Budget planning (CU-012/CU-013)', () => {
+describe('BudgetService - Budget planning (CU-012/CU-013/CU-014)', () => {
   let service: BudgetService;
   let repo: Repository<Budget>;
   let categoryRepo: Repository<Category>;
+  let movementRepo: Repository<Transaction>;
 
   const userId = '550e8400-e29b-41d4-a716-446655440000';
   const categoryId = '550e8400-e29b-41d4-a716-446655440001';
@@ -32,6 +35,7 @@ describe('BudgetService - Budget planning (CU-012/CU-013)', () => {
         BudgetService,
         CreateMonthlyBudgetUseCase,
         CreateCategoryBudgetUseCase,
+        ViewBudgetProgressUseCase,
         {
           provide: getRepositoryToken(Budget),
           useValue: {
@@ -52,12 +56,19 @@ describe('BudgetService - Budget planning (CU-012/CU-013)', () => {
             findOne: jest.fn(),
           },
         },
+        {
+          provide: getRepositoryToken(Transaction),
+          useValue: {
+            find: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<BudgetService>(BudgetService);
     repo = module.get<Repository<Budget>>(getRepositoryToken(Budget));
     categoryRepo = module.get<Repository<Category>>(getRepositoryToken(Category));
+    movementRepo = module.get<Repository<Transaction>>(getRepositoryToken(Transaction));
   });
 
   it('crea el presupuesto mensual general usando la tabla budgets', async () => {
@@ -255,5 +266,132 @@ describe('BudgetService - Budget planning (CU-012/CU-013)', () => {
       }),
     ).rejects.toThrow(BadRequestException);
     expect(repo.save).not.toHaveBeenCalled();
+  });
+
+  it('consulta el avance del presupuesto mensual usando movimientos de gasto del periodo', async () => {
+    jest.spyOn(repo, 'find').mockResolvedValue([
+      {
+        id: 'budget-monthly',
+        userId,
+        categoryId: null,
+        name: 'Presupuesto mensual 06/2026',
+        periodMonth: '2026-06-01',
+        limitAmount: 25000,
+        currency: 'DOP',
+      } as Budget,
+    ]);
+    jest.spyOn(movementRepo, 'find').mockResolvedValue([
+      {
+        userId,
+        type: TransactionType.EXPENSE,
+        amount: 4500,
+        date: '2026-06-05',
+        categoryId,
+      } as Transaction,
+      {
+        userId,
+        type: TransactionType.EXPENSE,
+        amount: '1500.50' as unknown as number,
+        date: '2026-06-10',
+        categoryId: null,
+      } as Transaction,
+    ]);
+
+    const result = await service.viewProgress(userId, 2026, 6);
+
+    expect(repo.find).toHaveBeenCalledWith({
+      where: {
+        userId,
+        periodMonth: '2026-06-01',
+      },
+      relations: ['category'],
+      order: {
+        categoryId: 'ASC',
+        createdAt: 'ASC',
+      },
+    });
+    expect(movementRepo.find).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        userId,
+        type: TransactionType.EXPENSE,
+      }),
+    });
+    expect(result).toEqual({
+      periodMonth: '2026-06-01',
+      budgets: [
+        {
+          id: 'budget-monthly',
+          name: 'Presupuesto mensual 06/2026',
+          categoryId: null,
+          categoryName: null,
+          periodMonth: '2026-06-01',
+          limitAmount: 25000,
+          spentAmount: 6000.5,
+          remainingAmount: 18999.5,
+          progressPercentage: 24,
+          isExceeded: false,
+          currency: 'DOP',
+        },
+      ],
+    });
+  });
+
+  it('calcula el avance por categoria y marca cuando el limite fue excedido', async () => {
+    jest.spyOn(repo, 'find').mockResolvedValue([
+      {
+        id: 'budget-food',
+        userId,
+        categoryId,
+        category: {
+          id: categoryId,
+          userId,
+          name: 'Comida',
+          type: CategoryType.EXPENSE,
+        },
+        name: 'Presupuesto Comida 06/2026',
+        periodMonth: '2026-06-01',
+        limitAmount: 5000,
+        currency: 'DOP',
+      } as Budget,
+    ]);
+    jest.spyOn(movementRepo, 'find').mockResolvedValue([
+      {
+        userId,
+        type: TransactionType.EXPENSE,
+        amount: 3000,
+        date: '2026-06-05',
+        categoryId,
+      } as Transaction,
+      {
+        userId,
+        type: TransactionType.EXPENSE,
+        amount: 2500,
+        date: '2026-06-14',
+        categoryId,
+      } as Transaction,
+      {
+        userId,
+        type: TransactionType.EXPENSE,
+        amount: 1200,
+        date: '2026-06-20',
+        categoryId: 'other-category',
+      } as Transaction,
+    ]);
+
+    const result = await service.viewProgress(userId, 2026, 6);
+
+    expect(result.budgets[0]).toEqual({
+      id: 'budget-food',
+      name: 'Presupuesto Comida 06/2026',
+      categoryId,
+      categoryName: 'Comida',
+      periodMonth: '2026-06-01',
+      limitAmount: 5000,
+      spentAmount: 5500,
+      remainingAmount: -500,
+      progressPercentage: 110,
+      isExceeded: true,
+      currency: 'DOP',
+    });
   });
 });

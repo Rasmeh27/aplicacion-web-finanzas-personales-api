@@ -4,7 +4,7 @@ import { Repository, Between } from 'typeorm';
 import { Transaction, TransactionType } from './entities/transaction.entity';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { FilterTransactionDto } from './dto/filter-transaction.dto';
-import { FilterTransactionsUseCase } from './use-cases/filter-transactions.use-case';
+import { FilterTransactionsUseCase } from './use-cases/cu-011-filter-movements.use-case';
 
 @Injectable()
 export class TransactionService {

@@ -61,7 +61,7 @@ Tambien valide que un usuario no pueda crear dos presupuestos para la misma cate
 ## Archivos tocados
 
 - `apps/backend/src/modules/planning/dto/create-category-budget.dto.ts`
-- `apps/backend/src/modules/planning/use-cases/create-category-budget.use-case.ts`
+- `apps/backend/src/modules/planning/use-cases/cu-013-create-category-budget.use-case.ts`
 - `apps/backend/src/modules/planning/budget.controller.ts`
 - `apps/backend/src/modules/planning/budget.service.ts`
 - `apps/backend/src/modules/planning/budget.module.ts`

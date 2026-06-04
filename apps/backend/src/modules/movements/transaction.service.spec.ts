@@ -9,7 +9,7 @@ import {
 } from './entities/transaction.entity';
 import { TransactionService } from './transaction.service';
 import { FilterTransactionDto } from './dto/filter-transaction.dto';
-import { FilterTransactionsUseCase } from './use-cases/filter-transactions.use-case';
+import { FilterTransactionsUseCase } from './use-cases/cu-011-filter-movements.use-case';
 
 describe('TransactionService - Filtering (CU-011)', () => {
   let service: TransactionService;

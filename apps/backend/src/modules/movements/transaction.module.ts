@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Transaction } from './entities/transaction.entity';
 import { TransactionController } from './transaction.controller';
 import { TransactionService } from './transaction.service';
-import { FilterTransactionsUseCase } from './use-cases/filter-transactions.use-case';
+import { FilterTransactionsUseCase } from './use-cases/cu-011-filter-movements.use-case';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Transaction])],
