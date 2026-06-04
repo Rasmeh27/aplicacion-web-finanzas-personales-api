@@ -3,17 +3,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
 
-// Domain modules (MVP scope)
-import { AuthModule } from './modules/auth/auth.module';
-import { UserModule } from './modules/user/user.module';
-import { FinancialProfileModule } from './modules/financial-profile/financial-profile.module';
-import { TransactionModule } from './modules/transaction/transaction.module';
-import { CategoryModule } from './modules/category/category.module';
-import { BudgetModule } from './modules/budget/budget.module';
-import { GoalModule } from './modules/goal/goal.module';
-import { DebtModule } from './modules/debt/debt.module';
-import { AiAssistantModule } from './modules/ai-assistant/ai-assistant.module';
-import { AuditModule } from './modules/audit/audit.module';
+// Modulos principales del proyecto
+import { AccountProfileModule } from './modules/account-profile/account-profile.module';
+import { MovementsModule } from './modules/movements/movements.module';
+import { PlanningModule } from './modules/planning/planning.module';
+import { DashboardReportsModule } from './modules/dashboard-reports/dashboard-reports.module';
+import { AssistantAlertsModule } from './modules/assistant-alerts/assistant-alerts.module';
+import { UsStockMarketInvestmentModule } from './modules/us-stock-market-investment/us-stock-market-investment.module';
 
 @Module({
   imports: [
@@ -42,16 +38,12 @@ import { AuditModule } from './modules/audit/audit.module';
 
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
 
-    AuthModule,
-    UserModule,
-    FinancialProfileModule,
-    TransactionModule,
-    CategoryModule,
-    BudgetModule,
-    GoalModule,
-    DebtModule,
-    AiAssistantModule,
-    AuditModule,
+    AccountProfileModule,
+    MovementsModule,
+    PlanningModule,
+    DashboardReportsModule,
+    AssistantAlertsModule,
+    UsStockMarketInvestmentModule,
   ],
 })
 export class AppModule {}
