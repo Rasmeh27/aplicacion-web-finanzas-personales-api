@@ -6,14 +6,17 @@ import { Repository } from 'typeorm';
 import { CreateDebtDto } from './dto/create-debt.dto';
 import { Debt, DebtStatus } from './entities/debt.entity';
 import { DebtPayment } from './entities/debt-payment.entity';
+import { Transaction, TransactionType } from '../movements/entities/transaction.entity';
 import { DebtService } from './debt.service';
+import { CalculateDebtIncomeRatioUseCase } from './use-cases/cu-018-calculate-debt-income-ratio.use-case';
 import { RegisterDebtPaymentUseCase } from './use-cases/cu-017-register-debt-payment.use-case';
 import { RegisterDebtUseCase } from './use-cases/cu-016-register-debt.use-case';
 
-describe('DebtService - Debts planning (CU-016/CU-017)', () => {
+describe('DebtService - Debts planning (CU-016/CU-017/CU-018)', () => {
   let service: DebtService;
   let repo: Repository<Debt>;
   let paymentRepo: Repository<DebtPayment>;
+  let movementRepo: Repository<Transaction>;
 
   const userId = '9028b0b0-a7af-4367-9f86-a8b347c55727';
 
@@ -40,10 +43,12 @@ describe('DebtService - Debts planning (CU-016/CU-017)', () => {
         DebtService,
         RegisterDebtUseCase,
         RegisterDebtPaymentUseCase,
+        CalculateDebtIncomeRatioUseCase,
         {
           provide: getRepositoryToken(Debt),
           useValue: {
             create: jest.fn((data: Partial<Debt>) => data),
+            find: jest.fn(),
             findOne: jest.fn(),
             update: jest.fn(),
             save: jest.fn((debt: Partial<Debt>) => ({
@@ -66,12 +71,19 @@ describe('DebtService - Debts planning (CU-016/CU-017)', () => {
             createQueryBuilder: jest.fn(() => createPaymentSumQueryBuilder()),
           },
         },
+        {
+          provide: getRepositoryToken(Transaction),
+          useValue: {
+            find: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<DebtService>(DebtService);
     repo = module.get<Repository<Debt>>(getRepositoryToken(Debt));
     paymentRepo = module.get<Repository<DebtPayment>>(getRepositoryToken(DebtPayment));
+    movementRepo = module.get<Repository<Transaction>>(getRepositoryToken(Transaction));
   });
 
   it('registra una deuda usando la tabla debts', async () => {
@@ -262,5 +274,114 @@ describe('DebtService - Debts planning (CU-016/CU-017)', () => {
         status: DebtStatus.PAID,
       },
     );
+  });
+
+  it('calcula el ratio deuda ingreso del mes con deudas activas e ingresos', async () => {
+    jest.spyOn(repo, 'find').mockResolvedValue([
+      {
+        userId,
+        status: DebtStatus.ACTIVE,
+        minimumPayment: 7500,
+      } as Debt,
+      {
+        userId,
+        status: DebtStatus.ACTIVE,
+        minimumPayment: '2500.50' as unknown as number,
+      } as Debt,
+    ]);
+    jest.spyOn(movementRepo, 'find').mockResolvedValue([
+      {
+        userId,
+        type: TransactionType.INCOME,
+        amount: 50000,
+        date: '2026-06-05',
+      } as Transaction,
+    ]);
+
+    const result = await service.calculateIncomeRatio(userId, 2026, 6);
+
+    expect(repo.find).toHaveBeenCalledWith({
+      where: {
+        userId,
+        status: DebtStatus.ACTIVE,
+      },
+    });
+    expect(movementRepo.find).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        userId,
+        type: TransactionType.INCOME,
+      }),
+    });
+    expect(result).toEqual({
+      periodMonth: '2026-06-01',
+      totalMonthlyIncome: 50000,
+      totalMinimumDebtPayment: 10000.5,
+      debtIncomeRatio: 20,
+      riskLevel: 'healthy',
+      isHealthy: true,
+    });
+  });
+
+  it('marca warning cuando el ratio esta entre 36 y 50 por ciento', async () => {
+    jest.spyOn(repo, 'find').mockResolvedValue([
+      {
+        minimumPayment: 40000,
+        status: DebtStatus.ACTIVE,
+      } as Debt,
+    ]);
+    jest.spyOn(movementRepo, 'find').mockResolvedValue([
+      {
+        amount: 100000,
+        type: TransactionType.INCOME,
+      } as Transaction,
+    ]);
+
+    const result = await service.calculateIncomeRatio(userId, 2026, 6);
+
+    expect(result.riskLevel).toBe('warning');
+    expect(result.isHealthy).toBe(false);
+    expect(result.debtIncomeRatio).toBe(40);
+  });
+
+  it('marca critical cuando el ratio supera 50 por ciento', async () => {
+    jest.spyOn(repo, 'find').mockResolvedValue([
+      {
+        minimumPayment: 60000,
+        status: DebtStatus.ACTIVE,
+      } as Debt,
+    ]);
+    jest.spyOn(movementRepo, 'find').mockResolvedValue([
+      {
+        amount: 100000,
+        type: TransactionType.INCOME,
+      } as Transaction,
+    ]);
+
+    const result = await service.calculateIncomeRatio(userId, 2026, 6);
+
+    expect(result.riskLevel).toBe('critical');
+    expect(result.isHealthy).toBe(false);
+    expect(result.debtIncomeRatio).toBe(60);
+  });
+
+  it('retorna no_income cuando no hay ingresos en el mes', async () => {
+    jest.spyOn(repo, 'find').mockResolvedValue([
+      {
+        minimumPayment: 7500,
+        status: DebtStatus.ACTIVE,
+      } as Debt,
+    ]);
+    jest.spyOn(movementRepo, 'find').mockResolvedValue([]);
+
+    const result = await service.calculateIncomeRatio(userId, 2026, 6);
+
+    expect(result).toEqual({
+      periodMonth: '2026-06-01',
+      totalMonthlyIncome: 0,
+      totalMinimumDebtPayment: 7500,
+      debtIncomeRatio: null,
+      riskLevel: 'no_income',
+      isHealthy: false,
+    });
   });
 });

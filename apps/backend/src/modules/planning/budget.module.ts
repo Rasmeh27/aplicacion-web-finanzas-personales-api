@@ -18,6 +18,7 @@ import { ViewBudgetProgressUseCase } from './use-cases/cu-014-view-budget-progre
 import { CreateFinancialGoalUseCase } from './use-cases/cu-015-create-financial-goal.use-case';
 import { RegisterDebtUseCase } from './use-cases/cu-016-register-debt.use-case';
 import { RegisterDebtPaymentUseCase } from './use-cases/cu-017-register-debt-payment.use-case';
+import { CalculateDebtIncomeRatioUseCase } from './use-cases/cu-018-calculate-debt-income-ratio.use-case';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { RegisterDebtPaymentUseCase } from './use-cases/cu-017-register-debt-pay
     CreateFinancialGoalUseCase,
     RegisterDebtUseCase,
     RegisterDebtPaymentUseCase,
+    CalculateDebtIncomeRatioUseCase,
   ],
   exports: [BudgetService, FinancialGoalService, DebtService],
 })

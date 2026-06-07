@@ -1,14 +1,17 @@
 import {
   Body,
   Controller,
+  Get,
   Param,
   Post,
+  Query,
   Request,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CreateDebtPaymentDto } from './dto/create-debt-payment.dto';
 import { CreateDebtDto } from './dto/create-debt.dto';
+import { DebtIncomeRatioQueryDto } from './dto/debt-income-ratio-query.dto';
 import { DebtService } from './debt.service';
 
 @ApiTags('debts')
@@ -28,6 +31,26 @@ export class DebtController {
   })
   create(@Request() req: any, @Body() dto: CreateDebtDto) {
     return this.service.create(this.getUserId(req), dto);
+  }
+
+  @Get('income-ratio')
+  @ApiOperation({
+    summary: 'Calcular ratio deuda/ingreso',
+    description: 'Calcula el peso de pagos minimos de deudas activas contra los ingresos del mes.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Ratio deuda/ingreso calculado correctamente',
+  })
+  calculateIncomeRatio(
+    @Request() req: any,
+    @Query() query: DebtIncomeRatioQueryDto,
+  ) {
+    return this.service.calculateIncomeRatio(
+      this.getUserId(req),
+      query.year,
+      query.month,
+    );
   }
 
   @Post(':debtId/payments')
