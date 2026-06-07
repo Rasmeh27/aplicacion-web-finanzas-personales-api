@@ -8,8 +8,9 @@ import {
 } from '../movements/entities/transaction.entity';
 import { DashboardReportsService } from './dashboard-reports.service';
 import { ViewMonthlyIncomeTotalUseCase } from './use-cases/cu-019-view-monthly-income-total.use-case';
+import { ViewMonthlyExpenseTotalUseCase } from './use-cases/cu-020-view-monthly-expense-total.use-case';
 
-describe('DashboardReportsService - Dashboard reports (CU-019)', () => {
+describe('DashboardReportsService - Dashboard reports (CU-019/CU-020)', () => {
   let service: DashboardReportsService;
   let movementRepo: Repository<Transaction>;
 
@@ -20,6 +21,7 @@ describe('DashboardReportsService - Dashboard reports (CU-019)', () => {
       providers: [
         DashboardReportsService,
         ViewMonthlyIncomeTotalUseCase,
+        ViewMonthlyExpenseTotalUseCase,
         {
           provide: getRepositoryToken(Transaction),
           useValue: {
@@ -72,6 +74,49 @@ describe('DashboardReportsService - Dashboard reports (CU-019)', () => {
     expect(result).toEqual({
       periodMonth: '2026-06-01',
       totalIncome: 0,
+      currency: 'DOP',
+    });
+  });
+
+  it('consulta el total de gastos del mes usando movements', async () => {
+    jest.spyOn(movementRepo, 'find').mockResolvedValue([
+      {
+        userId,
+        type: TransactionType.EXPENSE,
+        amount: 1200,
+        date: '2026-06-10',
+      } as Transaction,
+      {
+        userId,
+        type: TransactionType.EXPENSE,
+        amount: '800.75' as unknown as number,
+        date: '2026-06-22',
+      } as Transaction,
+    ]);
+
+    const result = await service.viewMonthlyExpenseTotal(userId, 2026, 6);
+
+    expect(movementRepo.find).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        userId,
+        type: TransactionType.EXPENSE,
+      }),
+    });
+    expect(result).toEqual({
+      periodMonth: '2026-06-01',
+      totalExpense: 2000.75,
+      currency: 'DOP',
+    });
+  });
+
+  it('retorna 0 cuando no hay gastos en el mes', async () => {
+    jest.spyOn(movementRepo, 'find').mockResolvedValue([]);
+
+    const result = await service.viewMonthlyExpenseTotal(userId, 2026, 6);
+
+    expect(result).toEqual({
+      periodMonth: '2026-06-01',
+      totalExpense: 0,
       currency: 'DOP',
     });
   });

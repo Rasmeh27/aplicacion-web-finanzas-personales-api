@@ -32,6 +32,23 @@ export class DashboardReportsController {
     );
   }
 
+  @Get('monthly-expense-total')
+  @ApiOperation({
+    summary: 'Ver total de gastos del mes',
+    description: 'Consulta el total de gastos registrados por el usuario en un mes.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Total de gastos del mes consultado correctamente',
+  })
+  viewMonthlyExpenseTotal(@Request() req: any, @Query() query: MonthlyReportQueryDto) {
+    return this.service.viewMonthlyExpenseTotal(
+      this.getUserId(req),
+      query.year,
+      query.month,
+    );
+  }
+
   private getUserId(req: any): string {
     const userId = req.user?.id ?? req.user?.sub;
     if (userId) return userId;
