@@ -10,6 +10,8 @@ import {
   FinancialGoal,
   FinancialGoalStatus,
 } from '../planning/entities/financial-goal.entity';
+import { Debt, DebtStatus } from '../planning/entities/debt.entity';
+import { DebtPayment } from '../planning/entities/debt-payment.entity';
 import { DashboardReportsService } from './dashboard-reports.service';
 import { ViewMonthlyIncomeTotalUseCase } from './use-cases/cu-019-view-monthly-income-total.use-case';
 import { ViewMonthlyExpenseTotalUseCase } from './use-cases/cu-020-view-monthly-expense-total.use-case';
@@ -17,11 +19,14 @@ import { ViewMonthlyBalanceUseCase } from './use-cases/cu-021-view-monthly-balan
 import { ViewSavingsPercentageUseCase } from './use-cases/cu-022-view-savings-percentage.use-case';
 import { ViewExpensesByCategoryUseCase } from './use-cases/cu-023-view-expenses-by-category.use-case';
 import { ViewFinancialGoalsSummaryUseCase } from './use-cases/cu-024-view-financial-goals-summary.use-case';
+import { ViewDebtsSummaryUseCase } from './use-cases/cu-025-view-debts-summary.use-case';
 
-describe('DashboardReportsService - Dashboard reports (CU-019/CU-020/CU-021/CU-022/CU-023/CU-024)', () => {
+describe('DashboardReportsService - Dashboard reports (CU-019/CU-020/CU-021/CU-022/CU-023/CU-024/CU-025)', () => {
   let service: DashboardReportsService;
   let movementRepo: Repository<Transaction>;
   let goalRepo: Repository<FinancialGoal>;
+  let debtRepo: Repository<Debt>;
+  let paymentRepo: Repository<DebtPayment>;
 
   const userId = '9028b0b0-a7af-4367-9f86-a8b347c55727';
 
@@ -35,6 +40,7 @@ describe('DashboardReportsService - Dashboard reports (CU-019/CU-020/CU-021/CU-0
         ViewSavingsPercentageUseCase,
         ViewExpensesByCategoryUseCase,
         ViewFinancialGoalsSummaryUseCase,
+        ViewDebtsSummaryUseCase,
         {
           provide: getRepositoryToken(Transaction),
           useValue: {
@@ -47,12 +53,26 @@ describe('DashboardReportsService - Dashboard reports (CU-019/CU-020/CU-021/CU-0
             find: jest.fn(),
           },
         },
+        {
+          provide: getRepositoryToken(Debt),
+          useValue: {
+            find: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(DebtPayment),
+          useValue: {
+            find: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<DashboardReportsService>(DashboardReportsService);
     movementRepo = module.get<Repository<Transaction>>(getRepositoryToken(Transaction));
     goalRepo = module.get<Repository<FinancialGoal>>(getRepositoryToken(FinancialGoal));
+    debtRepo = module.get<Repository<Debt>>(getRepositoryToken(Debt));
+    paymentRepo = module.get<Repository<DebtPayment>>(getRepositoryToken(DebtPayment));
   });
 
   it('consulta el total de ingresos del mes usando movements', async () => {
@@ -432,6 +452,139 @@ describe('DashboardReportsService - Dashboard reports (CU-019/CU-020/CU-021/CU-0
       overallProgressPercentage: 0,
       currency: 'DOP',
       goals: [],
+    });
+  });
+
+  it('consulta el resumen de deudas del usuario', async () => {
+    jest.spyOn(debtRepo, 'find').mockResolvedValue([
+      {
+        id: 'debt-1',
+        userId,
+        name: 'Tarjeta',
+        creditor: 'Banco A',
+        initialAmount: 50000,
+        minimumPayment: 2500,
+        interestRatePct: 18.5,
+        dueDay: 15,
+        status: DebtStatus.ACTIVE,
+      } as Debt,
+      {
+        id: 'debt-2',
+        userId,
+        name: 'Prestamo',
+        creditor: null,
+        initialAmount: '30000' as unknown as number,
+        minimumPayment: '1500' as unknown as number,
+        interestRatePct: '10' as unknown as number,
+        dueDay: null,
+        status: DebtStatus.PAID,
+      } as Debt,
+      {
+        id: 'debt-3',
+        userId,
+        name: 'Deuda vieja',
+        creditor: 'Banco B',
+        initialAmount: 10000,
+        minimumPayment: 500,
+        interestRatePct: 0,
+        dueDay: 1,
+        status: DebtStatus.CANCELLED,
+      } as Debt,
+    ]);
+    jest.spyOn(paymentRepo, 'find').mockResolvedValue([
+      {
+        debtId: 'debt-1',
+        amount: 10000,
+      } as DebtPayment,
+      {
+        debtId: 'debt-1',
+        amount: '5000.50' as unknown as number,
+      } as DebtPayment,
+      {
+        debtId: 'debt-2',
+        amount: 30000,
+      } as DebtPayment,
+    ]);
+
+    const result = await service.viewDebtsSummary(userId);
+
+    expect(debtRepo.find).toHaveBeenCalledWith({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+    });
+    expect(paymentRepo.find).toHaveBeenCalledWith({
+      where: { userId },
+    });
+    expect(result).toEqual({
+      totalDebts: 3,
+      activeDebts: 1,
+      paidDebts: 1,
+      cancelledDebts: 1,
+      totalInitialAmount: 90000,
+      totalPaidAmount: 45000.5,
+      totalRemainingAmount: 34999.5,
+      totalMinimumPayment: 2500,
+      averageInterestRatePct: 18.5,
+      currency: 'DOP',
+      debts: [
+        {
+          debtId: 'debt-1',
+          name: 'Tarjeta',
+          creditor: 'Banco A',
+          initialAmount: 50000,
+          paidAmount: 15000.5,
+          remainingAmount: 34999.5,
+          minimumPayment: 2500,
+          interestRatePct: 18.5,
+          dueDay: 15,
+          status: DebtStatus.ACTIVE,
+        },
+        {
+          debtId: 'debt-2',
+          name: 'Prestamo',
+          creditor: null,
+          initialAmount: 30000,
+          paidAmount: 30000,
+          remainingAmount: 0,
+          minimumPayment: 1500,
+          interestRatePct: 10,
+          dueDay: null,
+          status: DebtStatus.PAID,
+        },
+        {
+          debtId: 'debt-3',
+          name: 'Deuda vieja',
+          creditor: 'Banco B',
+          initialAmount: 10000,
+          paidAmount: 0,
+          remainingAmount: 0,
+          minimumPayment: 500,
+          interestRatePct: 0,
+          dueDay: 1,
+          status: DebtStatus.CANCELLED,
+        },
+      ],
+    });
+  });
+
+  it('retorna resumen en cero cuando no hay deudas', async () => {
+    jest.spyOn(debtRepo, 'find').mockResolvedValue([]);
+    jest.spyOn(paymentRepo, 'find').mockResolvedValue([]);
+
+    const result = await service.viewDebtsSummary(userId);
+
+    expect(result).toEqual({
+      totalDebts: 0,
+      activeDebts: 0,
+      paidDebts: 0,
+      cancelledDebts: 0,
+      totalInitialAmount: 0,
+      totalPaidAmount: 0,
+      totalRemainingAmount: 0,
+      totalMinimumPayment: 0,
+      averageInterestRatePct: 0,
+      currency: 'DOP',
+      debts: [],
     });
   });
 });

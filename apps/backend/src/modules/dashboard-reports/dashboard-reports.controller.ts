@@ -113,6 +113,19 @@ export class DashboardReportsController {
     return this.service.viewFinancialGoalsSummary(this.getUserId(req));
   }
 
+  @Get('debts-summary')
+  @ApiOperation({
+    summary: 'Ver resumen de deudas',
+    description: 'Consulta el resumen de deudas y pagos registrados por el usuario.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Resumen de deudas consultado correctamente',
+  })
+  viewDebtsSummary(@Request() req: any) {
+    return this.service.viewDebtsSummary(this.getUserId(req));
+  }
+
   private getUserId(req: any): string {
     const userId = req.user?.id ?? req.user?.sub;
     if (userId) return userId;
