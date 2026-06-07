@@ -83,6 +83,23 @@ export class DashboardReportsController {
     );
   }
 
+  @Get('expenses-by-category')
+  @ApiOperation({
+    summary: 'Ver gastos por categoria',
+    description: 'Consulta los gastos del mes agrupados por categoria.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Gastos por categoria consultados correctamente',
+  })
+  viewExpensesByCategory(@Request() req: any, @Query() query: MonthlyReportQueryDto) {
+    return this.service.viewExpensesByCategory(
+      this.getUserId(req),
+      query.year,
+      query.month,
+    );
+  }
+
   private getUserId(req: any): string {
     const userId = req.user?.id ?? req.user?.sub;
     if (userId) return userId;

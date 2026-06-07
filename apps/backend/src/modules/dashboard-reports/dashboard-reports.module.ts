@@ -7,6 +7,7 @@ import { ViewMonthlyIncomeTotalUseCase } from './use-cases/cu-019-view-monthly-i
 import { ViewMonthlyExpenseTotalUseCase } from './use-cases/cu-020-view-monthly-expense-total.use-case';
 import { ViewMonthlyBalanceUseCase } from './use-cases/cu-021-view-monthly-balance.use-case';
 import { ViewSavingsPercentageUseCase } from './use-cases/cu-022-view-savings-percentage.use-case';
+import { ViewExpensesByCategoryUseCase } from './use-cases/cu-023-view-expenses-by-category.use-case';
 
 // Modulo 4: Dashboard y reportes
 @Module({
@@ -18,6 +19,7 @@ import { ViewSavingsPercentageUseCase } from './use-cases/cu-022-view-savings-pe
     ViewMonthlyExpenseTotalUseCase,
     ViewMonthlyBalanceUseCase,
     ViewSavingsPercentageUseCase,
+    ViewExpensesByCategoryUseCase,
   ],
   exports: [DashboardReportsService],
 })

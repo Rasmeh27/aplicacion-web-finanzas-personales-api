@@ -11,8 +11,9 @@ import { ViewMonthlyIncomeTotalUseCase } from './use-cases/cu-019-view-monthly-i
 import { ViewMonthlyExpenseTotalUseCase } from './use-cases/cu-020-view-monthly-expense-total.use-case';
 import { ViewMonthlyBalanceUseCase } from './use-cases/cu-021-view-monthly-balance.use-case';
 import { ViewSavingsPercentageUseCase } from './use-cases/cu-022-view-savings-percentage.use-case';
+import { ViewExpensesByCategoryUseCase } from './use-cases/cu-023-view-expenses-by-category.use-case';
 
-describe('DashboardReportsService - Dashboard reports (CU-019/CU-020/CU-021/CU-022)', () => {
+describe('DashboardReportsService - Dashboard reports (CU-019/CU-020/CU-021/CU-022/CU-023)', () => {
   let service: DashboardReportsService;
   let movementRepo: Repository<Transaction>;
 
@@ -26,6 +27,7 @@ describe('DashboardReportsService - Dashboard reports (CU-019/CU-020/CU-021/CU-0
         ViewMonthlyExpenseTotalUseCase,
         ViewMonthlyBalanceUseCase,
         ViewSavingsPercentageUseCase,
+        ViewExpensesByCategoryUseCase,
         {
           provide: getRepositoryToken(Transaction),
           useValue: {
@@ -248,5 +250,70 @@ describe('DashboardReportsService - Dashboard reports (CU-019/CU-020/CU-021/CU-0
 
     expect(result.savingsPercentage).toBeNull();
     expect(result.totalIncome).toBe(0);
+  });
+
+  it('agrupa los gastos del mes por categoria', async () => {
+    jest.spyOn(movementRepo, 'find').mockResolvedValue([
+      {
+        type: TransactionType.EXPENSE,
+        amount: 3000,
+        categoryId: 'food-category',
+        category: { name: 'Comida' },
+      } as Transaction,
+      {
+        type: TransactionType.EXPENSE,
+        amount: 1000,
+        categoryId: 'food-category',
+        category: { name: 'Comida' },
+      } as Transaction,
+      {
+        type: TransactionType.EXPENSE,
+        amount: 1000,
+        categoryId: null,
+        category: null,
+      } as Transaction,
+    ]);
+
+    const result = await service.viewExpensesByCategory(userId, 2026, 6);
+
+    expect(movementRepo.find).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        userId,
+        type: TransactionType.EXPENSE,
+      }),
+      relations: ['category'],
+    });
+    expect(result).toEqual({
+      periodMonth: '2026-06-01',
+      totalExpense: 5000,
+      categories: [
+        {
+          categoryId: 'food-category',
+          categoryName: 'Comida',
+          totalExpense: 4000,
+          percentage: 80,
+        },
+        {
+          categoryId: null,
+          categoryName: 'Sin categoria',
+          totalExpense: 1000,
+          percentage: 20,
+        },
+      ],
+      currency: 'DOP',
+    });
+  });
+
+  it('retorna lista vacia cuando no hay gastos por categoria', async () => {
+    jest.spyOn(movementRepo, 'find').mockResolvedValue([]);
+
+    const result = await service.viewExpensesByCategory(userId, 2026, 6);
+
+    expect(result).toEqual({
+      periodMonth: '2026-06-01',
+      totalExpense: 0,
+      categories: [],
+      currency: 'DOP',
+    });
   });
 });
