@@ -126,6 +126,26 @@ export class DashboardReportsController {
     return this.service.viewDebtsSummary(this.getUserId(req));
   }
 
+  @Get('financial-health')
+  @ApiOperation({
+    summary: 'Calcular salud financiera',
+    description: 'Calcula la salud financiera mensual del usuario.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Salud financiera calculada correctamente',
+  })
+  calculateFinancialHealth(
+    @Request() req: any,
+    @Query() query: MonthlyReportQueryDto,
+  ) {
+    return this.service.calculateFinancialHealth(
+      this.getUserId(req),
+      query.year,
+      query.month,
+    );
+  }
+
   private getUserId(req: any): string {
     const userId = req.user?.id ?? req.user?.sub;
     if (userId) return userId;

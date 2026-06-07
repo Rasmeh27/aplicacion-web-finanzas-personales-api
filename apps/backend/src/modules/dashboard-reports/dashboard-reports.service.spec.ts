@@ -20,8 +20,9 @@ import { ViewSavingsPercentageUseCase } from './use-cases/cu-022-view-savings-pe
 import { ViewExpensesByCategoryUseCase } from './use-cases/cu-023-view-expenses-by-category.use-case';
 import { ViewFinancialGoalsSummaryUseCase } from './use-cases/cu-024-view-financial-goals-summary.use-case';
 import { ViewDebtsSummaryUseCase } from './use-cases/cu-025-view-debts-summary.use-case';
+import { CalculateFinancialHealthUseCase } from './use-cases/cu-026-calculate-financial-health.use-case';
 
-describe('DashboardReportsService - Dashboard reports (CU-019/CU-020/CU-021/CU-022/CU-023/CU-024/CU-025)', () => {
+describe('DashboardReportsService - Dashboard reports (CU-019/CU-020/CU-021/CU-022/CU-023/CU-024/CU-025/CU-026)', () => {
   let service: DashboardReportsService;
   let movementRepo: Repository<Transaction>;
   let goalRepo: Repository<FinancialGoal>;
@@ -41,6 +42,7 @@ describe('DashboardReportsService - Dashboard reports (CU-019/CU-020/CU-021/CU-0
         ViewExpensesByCategoryUseCase,
         ViewFinancialGoalsSummaryUseCase,
         ViewDebtsSummaryUseCase,
+        CalculateFinancialHealthUseCase,
         {
           provide: getRepositoryToken(Transaction),
           useValue: {
@@ -585,6 +587,103 @@ describe('DashboardReportsService - Dashboard reports (CU-019/CU-020/CU-021/CU-0
       averageInterestRatePct: 0,
       currency: 'DOP',
       debts: [],
+    });
+  });
+
+  it('calcula la salud financiera mensual del usuario', async () => {
+    jest.spyOn(movementRepo, 'find').mockResolvedValue([
+      {
+        type: TransactionType.INCOME,
+        amount: 50000,
+      } as Transaction,
+      {
+        type: TransactionType.EXPENSE,
+        amount: 15000,
+      } as Transaction,
+    ]);
+    jest.spyOn(debtRepo, 'find').mockResolvedValue([
+      {
+        id: 'debt-1',
+        initialAmount: 40000,
+        minimumPayment: 5000,
+        status: DebtStatus.ACTIVE,
+      } as Debt,
+    ]);
+    jest.spyOn(paymentRepo, 'find').mockResolvedValue([
+      {
+        debtId: 'debt-1',
+        amount: 10000,
+      } as DebtPayment,
+    ]);
+    jest.spyOn(goalRepo, 'find').mockResolvedValue([
+      {
+        targetAmount: 100000,
+        currentAmount: 50000,
+      } as FinancialGoal,
+    ]);
+
+    const result = await service.calculateFinancialHealth(userId, 2026, 6);
+
+    expect(movementRepo.find).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        userId,
+      }),
+    });
+    expect(debtRepo.find).toHaveBeenCalledWith({
+      where: {
+        userId,
+        status: DebtStatus.ACTIVE,
+      },
+    });
+    expect(result).toEqual({
+      periodMonth: '2026-06-01',
+      totalIncome: 50000,
+      totalExpense: 15000,
+      monthlyBalance: 35000,
+      savingsPercentage: 70,
+      debtIncomeRatio: 10,
+      totalDebtRemaining: 30000,
+      goalsProgressPercentage: 50,
+      financialHealthScore: 90,
+      status: 'excellent',
+      recommendations: [
+        'Priorizar pagos a deudas activas para bajar el saldo pendiente.',
+      ],
+      currency: 'DOP',
+    });
+  });
+
+  it('calcula salud critica cuando no hay ingresos y existen deudas', async () => {
+    jest.spyOn(movementRepo, 'find').mockResolvedValue([]);
+    jest.spyOn(debtRepo, 'find').mockResolvedValue([
+      {
+        id: 'debt-1',
+        initialAmount: 10000,
+        minimumPayment: 1000,
+        status: DebtStatus.ACTIVE,
+      } as Debt,
+    ]);
+    jest.spyOn(paymentRepo, 'find').mockResolvedValue([]);
+    jest.spyOn(goalRepo, 'find').mockResolvedValue([]);
+
+    const result = await service.calculateFinancialHealth(userId, 2026, 6);
+
+    expect(result).toEqual({
+      periodMonth: '2026-06-01',
+      totalIncome: 0,
+      totalExpense: 0,
+      monthlyBalance: 0,
+      savingsPercentage: null,
+      debtIncomeRatio: null,
+      totalDebtRemaining: 10000,
+      goalsProgressPercentage: 0,
+      financialHealthScore: 20,
+      status: 'critical',
+      recommendations: [
+        'Registrar ingresos del mes para medir mejor la salud financiera.',
+        'Reducir pagos minimos de deudas frente al ingreso mensual.',
+      ],
+      currency: 'DOP',
     });
   });
 });

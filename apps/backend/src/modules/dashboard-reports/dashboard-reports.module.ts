@@ -13,6 +13,7 @@ import { ViewSavingsPercentageUseCase } from './use-cases/cu-022-view-savings-pe
 import { ViewExpensesByCategoryUseCase } from './use-cases/cu-023-view-expenses-by-category.use-case';
 import { ViewFinancialGoalsSummaryUseCase } from './use-cases/cu-024-view-financial-goals-summary.use-case';
 import { ViewDebtsSummaryUseCase } from './use-cases/cu-025-view-debts-summary.use-case';
+import { CalculateFinancialHealthUseCase } from './use-cases/cu-026-calculate-financial-health.use-case';
 
 // Modulo 4: Dashboard y reportes
 @Module({
@@ -27,6 +28,7 @@ import { ViewDebtsSummaryUseCase } from './use-cases/cu-025-view-debts-summary.u
     ViewExpensesByCategoryUseCase,
     ViewFinancialGoalsSummaryUseCase,
     ViewDebtsSummaryUseCase,
+    CalculateFinancialHealthUseCase,
   ],
   exports: [DashboardReportsService],
 })
