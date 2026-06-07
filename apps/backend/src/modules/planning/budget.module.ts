@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Budget } from './entities/budget.entity';
 import { Category } from './entities/category.entity';
 import { Debt } from './entities/debt.entity';
+import { DebtPayment } from './entities/debt-payment.entity';
 import { FinancialGoal } from './entities/financial-goal.entity';
 import { Transaction } from '../movements/entities/transaction.entity';
 import { BudgetController } from './budget.controller';
@@ -16,9 +17,19 @@ import { CreateMonthlyBudgetUseCase } from './use-cases/cu-012-create-monthly-bu
 import { ViewBudgetProgressUseCase } from './use-cases/cu-014-view-budget-progress.use-case';
 import { CreateFinancialGoalUseCase } from './use-cases/cu-015-create-financial-goal.use-case';
 import { RegisterDebtUseCase } from './use-cases/cu-016-register-debt.use-case';
+import { RegisterDebtPaymentUseCase } from './use-cases/cu-017-register-debt-payment.use-case';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Budget, Category, Transaction, FinancialGoal, Debt])],
+  imports: [
+    TypeOrmModule.forFeature([
+      Budget,
+      Category,
+      Transaction,
+      FinancialGoal,
+      Debt,
+      DebtPayment,
+    ]),
+  ],
   controllers: [BudgetController, FinancialGoalController, DebtController],
   providers: [
     BudgetService,
@@ -29,6 +40,7 @@ import { RegisterDebtUseCase } from './use-cases/cu-016-register-debt.use-case';
     ViewBudgetProgressUseCase,
     CreateFinancialGoalUseCase,
     RegisterDebtUseCase,
+    RegisterDebtPaymentUseCase,
   ],
   exports: [BudgetService, FinancialGoalService, DebtService],
 })
