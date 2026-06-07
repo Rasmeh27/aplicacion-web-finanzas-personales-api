@@ -9,8 +9,9 @@ import {
 import { DashboardReportsService } from './dashboard-reports.service';
 import { ViewMonthlyIncomeTotalUseCase } from './use-cases/cu-019-view-monthly-income-total.use-case';
 import { ViewMonthlyExpenseTotalUseCase } from './use-cases/cu-020-view-monthly-expense-total.use-case';
+import { ViewMonthlyBalanceUseCase } from './use-cases/cu-021-view-monthly-balance.use-case';
 
-describe('DashboardReportsService - Dashboard reports (CU-019/CU-020)', () => {
+describe('DashboardReportsService - Dashboard reports (CU-019/CU-020/CU-021)', () => {
   let service: DashboardReportsService;
   let movementRepo: Repository<Transaction>;
 
@@ -22,6 +23,7 @@ describe('DashboardReportsService - Dashboard reports (CU-019/CU-020)', () => {
         DashboardReportsService,
         ViewMonthlyIncomeTotalUseCase,
         ViewMonthlyExpenseTotalUseCase,
+        ViewMonthlyBalanceUseCase,
         {
           provide: getRepositoryToken(Transaction),
           useValue: {
@@ -117,6 +119,75 @@ describe('DashboardReportsService - Dashboard reports (CU-019/CU-020)', () => {
     expect(result).toEqual({
       periodMonth: '2026-06-01',
       totalExpense: 0,
+      currency: 'DOP',
+    });
+  });
+
+  it('consulta el balance mensual restando gastos a ingresos', async () => {
+    jest.spyOn(movementRepo, 'find').mockResolvedValue([
+      {
+        userId,
+        type: TransactionType.INCOME,
+        amount: 50000,
+        date: '2026-06-05',
+      } as Transaction,
+      {
+        userId,
+        type: TransactionType.EXPENSE,
+        amount: 12500,
+        date: '2026-06-10',
+      } as Transaction,
+      {
+        userId,
+        type: TransactionType.EXPENSE,
+        amount: '2500.25' as unknown as number,
+        date: '2026-06-20',
+      } as Transaction,
+    ]);
+
+    const result = await service.viewMonthlyBalance(userId, 2026, 6);
+
+    expect(movementRepo.find).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        userId,
+      }),
+    });
+    expect(result).toEqual({
+      periodMonth: '2026-06-01',
+      totalIncome: 50000,
+      totalExpense: 15000.25,
+      balance: 34999.75,
+      currency: 'DOP',
+    });
+  });
+
+  it('retorna balance negativo cuando los gastos superan los ingresos', async () => {
+    jest.spyOn(movementRepo, 'find').mockResolvedValue([
+      {
+        type: TransactionType.INCOME,
+        amount: 10000,
+      } as Transaction,
+      {
+        type: TransactionType.EXPENSE,
+        amount: 12500,
+      } as Transaction,
+    ]);
+
+    const result = await service.viewMonthlyBalance(userId, 2026, 6);
+
+    expect(result.balance).toBe(-2500);
+  });
+
+  it('retorna balance 0 cuando no hay movimientos en el mes', async () => {
+    jest.spyOn(movementRepo, 'find').mockResolvedValue([]);
+
+    const result = await service.viewMonthlyBalance(userId, 2026, 6);
+
+    expect(result).toEqual({
+      periodMonth: '2026-06-01',
+      totalIncome: 0,
+      totalExpense: 0,
+      balance: 0,
       currency: 'DOP',
     });
   });

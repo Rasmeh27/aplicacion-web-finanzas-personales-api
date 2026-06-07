@@ -7,12 +7,17 @@ import {
   MonthlyExpenseTotalResponse,
   ViewMonthlyExpenseTotalUseCase,
 } from './use-cases/cu-020-view-monthly-expense-total.use-case';
+import {
+  MonthlyBalanceResponse,
+  ViewMonthlyBalanceUseCase,
+} from './use-cases/cu-021-view-monthly-balance.use-case';
 
 @Injectable()
 export class DashboardReportsService {
   constructor(
     private readonly viewMonthlyIncomeTotalUseCase: ViewMonthlyIncomeTotalUseCase,
     private readonly viewMonthlyExpenseTotalUseCase: ViewMonthlyExpenseTotalUseCase,
+    private readonly viewMonthlyBalanceUseCase: ViewMonthlyBalanceUseCase,
   ) {}
 
   viewMonthlyIncomeTotal(
@@ -29,5 +34,13 @@ export class DashboardReportsService {
     month: number,
   ): Promise<MonthlyExpenseTotalResponse> {
     return this.viewMonthlyExpenseTotalUseCase.execute(userId, year, month);
+  }
+
+  viewMonthlyBalance(
+    userId: string,
+    year: number,
+    month: number,
+  ): Promise<MonthlyBalanceResponse> {
+    return this.viewMonthlyBalanceUseCase.execute(userId, year, month);
   }
 }

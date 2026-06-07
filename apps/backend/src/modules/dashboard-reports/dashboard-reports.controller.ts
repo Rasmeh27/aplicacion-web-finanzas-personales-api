@@ -49,6 +49,23 @@ export class DashboardReportsController {
     );
   }
 
+  @Get('monthly-balance')
+  @ApiOperation({
+    summary: 'Ver balance mensual',
+    description: 'Consulta ingresos, gastos y balance del usuario en un mes.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Balance mensual consultado correctamente',
+  })
+  viewMonthlyBalance(@Request() req: any, @Query() query: MonthlyReportQueryDto) {
+    return this.service.viewMonthlyBalance(
+      this.getUserId(req),
+      query.year,
+      query.month,
+    );
+  }
+
   private getUserId(req: any): string {
     const userId = req.user?.id ?? req.user?.sub;
     if (userId) return userId;
