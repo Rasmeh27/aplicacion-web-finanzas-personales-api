@@ -19,6 +19,10 @@ import {
   ExpensesByCategoryResponse,
   ViewExpensesByCategoryUseCase,
 } from './use-cases/cu-023-view-expenses-by-category.use-case';
+import {
+  FinancialGoalsSummaryResponse,
+  ViewFinancialGoalsSummaryUseCase,
+} from './use-cases/cu-024-view-financial-goals-summary.use-case';
 
 @Injectable()
 export class DashboardReportsService {
@@ -28,6 +32,7 @@ export class DashboardReportsService {
     private readonly viewMonthlyBalanceUseCase: ViewMonthlyBalanceUseCase,
     private readonly viewSavingsPercentageUseCase: ViewSavingsPercentageUseCase,
     private readonly viewExpensesByCategoryUseCase: ViewExpensesByCategoryUseCase,
+    private readonly viewFinancialGoalsSummaryUseCase: ViewFinancialGoalsSummaryUseCase,
   ) {}
 
   viewMonthlyIncomeTotal(
@@ -68,5 +73,11 @@ export class DashboardReportsService {
     month: number,
   ): Promise<ExpensesByCategoryResponse> {
     return this.viewExpensesByCategoryUseCase.execute(userId, year, month);
+  }
+
+  viewFinancialGoalsSummary(
+    userId: string,
+  ): Promise<FinancialGoalsSummaryResponse> {
+    return this.viewFinancialGoalsSummaryUseCase.execute(userId);
   }
 }

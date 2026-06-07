@@ -6,16 +6,22 @@ import {
   Transaction,
   TransactionType,
 } from '../movements/entities/transaction.entity';
+import {
+  FinancialGoal,
+  FinancialGoalStatus,
+} from '../planning/entities/financial-goal.entity';
 import { DashboardReportsService } from './dashboard-reports.service';
 import { ViewMonthlyIncomeTotalUseCase } from './use-cases/cu-019-view-monthly-income-total.use-case';
 import { ViewMonthlyExpenseTotalUseCase } from './use-cases/cu-020-view-monthly-expense-total.use-case';
 import { ViewMonthlyBalanceUseCase } from './use-cases/cu-021-view-monthly-balance.use-case';
 import { ViewSavingsPercentageUseCase } from './use-cases/cu-022-view-savings-percentage.use-case';
 import { ViewExpensesByCategoryUseCase } from './use-cases/cu-023-view-expenses-by-category.use-case';
+import { ViewFinancialGoalsSummaryUseCase } from './use-cases/cu-024-view-financial-goals-summary.use-case';
 
-describe('DashboardReportsService - Dashboard reports (CU-019/CU-020/CU-021/CU-022/CU-023)', () => {
+describe('DashboardReportsService - Dashboard reports (CU-019/CU-020/CU-021/CU-022/CU-023/CU-024)', () => {
   let service: DashboardReportsService;
   let movementRepo: Repository<Transaction>;
+  let goalRepo: Repository<FinancialGoal>;
 
   const userId = '9028b0b0-a7af-4367-9f86-a8b347c55727';
 
@@ -28,8 +34,15 @@ describe('DashboardReportsService - Dashboard reports (CU-019/CU-020/CU-021/CU-0
         ViewMonthlyBalanceUseCase,
         ViewSavingsPercentageUseCase,
         ViewExpensesByCategoryUseCase,
+        ViewFinancialGoalsSummaryUseCase,
         {
           provide: getRepositoryToken(Transaction),
+          useValue: {
+            find: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(FinancialGoal),
           useValue: {
             find: jest.fn(),
           },
@@ -39,6 +52,7 @@ describe('DashboardReportsService - Dashboard reports (CU-019/CU-020/CU-021/CU-0
 
     service = module.get<DashboardReportsService>(DashboardReportsService);
     movementRepo = module.get<Repository<Transaction>>(getRepositoryToken(Transaction));
+    goalRepo = module.get<Repository<FinancialGoal>>(getRepositoryToken(FinancialGoal));
   });
 
   it('consulta el total de ingresos del mes usando movements', async () => {
@@ -314,6 +328,110 @@ describe('DashboardReportsService - Dashboard reports (CU-019/CU-020/CU-021/CU-0
       totalExpense: 0,
       categories: [],
       currency: 'DOP',
+    });
+  });
+
+  it('consulta el resumen de metas financieras del usuario', async () => {
+    jest.spyOn(goalRepo, 'find').mockResolvedValue([
+      {
+        id: 'goal-1',
+        userId,
+        name: 'Fondo de emergencia',
+        targetAmount: 100000,
+        currentAmount: 25000,
+        currency: 'DOP',
+        targetDate: '2026-12-31',
+        status: FinancialGoalStatus.ACTIVE,
+      } as FinancialGoal,
+      {
+        id: 'goal-2',
+        userId,
+        name: 'Viaje',
+        targetAmount: '50000' as unknown as number,
+        currentAmount: '50000' as unknown as number,
+        currency: 'DOP',
+        targetDate: null,
+        status: FinancialGoalStatus.COMPLETED,
+      } as FinancialGoal,
+      {
+        id: 'goal-3',
+        userId,
+        name: 'Curso',
+        targetAmount: 20000,
+        currentAmount: 5000,
+        currency: 'DOP',
+        targetDate: '2026-10-01',
+        status: FinancialGoalStatus.PAUSED,
+      } as FinancialGoal,
+    ]);
+
+    const result = await service.viewFinancialGoalsSummary(userId);
+
+    expect(goalRepo.find).toHaveBeenCalledWith({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+    });
+    expect(result).toEqual({
+      totalGoals: 3,
+      activeGoals: 1,
+      completedGoals: 1,
+      pausedGoals: 1,
+      cancelledGoals: 0,
+      totalTargetAmount: 170000,
+      totalCurrentAmount: 80000,
+      overallProgressPercentage: 47.06,
+      currency: 'DOP',
+      goals: [
+        {
+          goalId: 'goal-1',
+          name: 'Fondo de emergencia',
+          targetAmount: 100000,
+          currentAmount: 25000,
+          remainingAmount: 75000,
+          progressPercentage: 25,
+          status: FinancialGoalStatus.ACTIVE,
+          targetDate: '2026-12-31',
+        },
+        {
+          goalId: 'goal-2',
+          name: 'Viaje',
+          targetAmount: 50000,
+          currentAmount: 50000,
+          remainingAmount: 0,
+          progressPercentage: 100,
+          status: FinancialGoalStatus.COMPLETED,
+          targetDate: null,
+        },
+        {
+          goalId: 'goal-3',
+          name: 'Curso',
+          targetAmount: 20000,
+          currentAmount: 5000,
+          remainingAmount: 15000,
+          progressPercentage: 25,
+          status: FinancialGoalStatus.PAUSED,
+          targetDate: '2026-10-01',
+        },
+      ],
+    });
+  });
+
+  it('retorna resumen en cero cuando no hay metas financieras', async () => {
+    jest.spyOn(goalRepo, 'find').mockResolvedValue([]);
+
+    const result = await service.viewFinancialGoalsSummary(userId);
+
+    expect(result).toEqual({
+      totalGoals: 0,
+      activeGoals: 0,
+      completedGoals: 0,
+      pausedGoals: 0,
+      cancelledGoals: 0,
+      totalTargetAmount: 0,
+      totalCurrentAmount: 0,
+      overallProgressPercentage: 0,
+      currency: 'DOP',
+      goals: [],
     });
   });
 });

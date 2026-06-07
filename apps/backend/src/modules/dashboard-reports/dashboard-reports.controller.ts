@@ -100,6 +100,19 @@ export class DashboardReportsController {
     );
   }
 
+  @Get('financial-goals-summary')
+  @ApiOperation({
+    summary: 'Ver resumen de metas',
+    description: 'Consulta el avance general de las metas financieras del usuario.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Resumen de metas consultado correctamente',
+  })
+  viewFinancialGoalsSummary(@Request() req: any) {
+    return this.service.viewFinancialGoalsSummary(this.getUserId(req));
+  }
+
   private getUserId(req: any): string {
     const userId = req.user?.id ?? req.user?.sub;
     if (userId) return userId;
