@@ -10,8 +10,9 @@ import { DashboardReportsService } from './dashboard-reports.service';
 import { ViewMonthlyIncomeTotalUseCase } from './use-cases/cu-019-view-monthly-income-total.use-case';
 import { ViewMonthlyExpenseTotalUseCase } from './use-cases/cu-020-view-monthly-expense-total.use-case';
 import { ViewMonthlyBalanceUseCase } from './use-cases/cu-021-view-monthly-balance.use-case';
+import { ViewSavingsPercentageUseCase } from './use-cases/cu-022-view-savings-percentage.use-case';
 
-describe('DashboardReportsService - Dashboard reports (CU-019/CU-020/CU-021)', () => {
+describe('DashboardReportsService - Dashboard reports (CU-019/CU-020/CU-021/CU-022)', () => {
   let service: DashboardReportsService;
   let movementRepo: Repository<Transaction>;
 
@@ -24,6 +25,7 @@ describe('DashboardReportsService - Dashboard reports (CU-019/CU-020/CU-021)', (
         ViewMonthlyIncomeTotalUseCase,
         ViewMonthlyExpenseTotalUseCase,
         ViewMonthlyBalanceUseCase,
+        ViewSavingsPercentageUseCase,
         {
           provide: getRepositoryToken(Transaction),
           useValue: {
@@ -190,5 +192,61 @@ describe('DashboardReportsService - Dashboard reports (CU-019/CU-020/CU-021)', (
       balance: 0,
       currency: 'DOP',
     });
+  });
+
+  it('calcula el porcentaje de ahorro mensual', async () => {
+    jest.spyOn(movementRepo, 'find').mockResolvedValue([
+      {
+        type: TransactionType.INCOME,
+        amount: 50000,
+      } as Transaction,
+      {
+        type: TransactionType.EXPENSE,
+        amount: 15000,
+      } as Transaction,
+    ]);
+
+    const result = await service.viewSavingsPercentage(userId, 2026, 6);
+
+    expect(result).toEqual({
+      periodMonth: '2026-06-01',
+      totalIncome: 50000,
+      totalExpense: 15000,
+      savedAmount: 35000,
+      savingsPercentage: 70,
+      currency: 'DOP',
+    });
+  });
+
+  it('calcula porcentaje negativo cuando los gastos superan ingresos', async () => {
+    jest.spyOn(movementRepo, 'find').mockResolvedValue([
+      {
+        type: TransactionType.INCOME,
+        amount: 10000,
+      } as Transaction,
+      {
+        type: TransactionType.EXPENSE,
+        amount: 15000,
+      } as Transaction,
+    ]);
+
+    const result = await service.viewSavingsPercentage(userId, 2026, 6);
+
+    expect(result.savedAmount).toBe(-5000);
+    expect(result.savingsPercentage).toBe(-50);
+  });
+
+  it('retorna porcentaje null cuando no hay ingresos', async () => {
+    jest.spyOn(movementRepo, 'find').mockResolvedValue([
+      {
+        type: TransactionType.EXPENSE,
+        amount: 15000,
+      } as Transaction,
+    ]);
+
+    const result = await service.viewSavingsPercentage(userId, 2026, 6);
+
+    expect(result.savingsPercentage).toBeNull();
+    expect(result.totalIncome).toBe(0);
   });
 });

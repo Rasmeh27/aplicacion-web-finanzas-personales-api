@@ -66,6 +66,23 @@ export class DashboardReportsController {
     );
   }
 
+  @Get('savings-percentage')
+  @ApiOperation({
+    summary: 'Ver porcentaje de ahorro',
+    description: 'Calcula el porcentaje de ahorro mensual del usuario.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Porcentaje de ahorro consultado correctamente',
+  })
+  viewSavingsPercentage(@Request() req: any, @Query() query: MonthlyReportQueryDto) {
+    return this.service.viewSavingsPercentage(
+      this.getUserId(req),
+      query.year,
+      query.month,
+    );
+  }
+
   private getUserId(req: any): string {
     const userId = req.user?.id ?? req.user?.sub;
     if (userId) return userId;
