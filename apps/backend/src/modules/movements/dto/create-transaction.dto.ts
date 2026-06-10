@@ -1,13 +1,17 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
+  IsDateString,
   IsEnum,
   IsNumber,
-  IsString,
-  IsDateString,
   IsOptional,
+  IsString,
   IsUUID,
+  Length,
+  Matches,
+  MaxLength,
   Min,
 } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
 import { TransactionType } from '../entities/transaction.entity';
 
 export class CreateTransactionDto {
@@ -15,24 +19,29 @@ export class CreateTransactionDto {
   @IsEnum(TransactionType)
   type: TransactionType;
 
-  @ApiProperty({ example: 1500 })
-  @IsNumber()
+  @ApiProperty({ example: 1500.00 })
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0.01)
   amount: number;
 
-  @ApiProperty({ example: 'DOP', required: false })
+  @ApiPropertyOptional({ example: 'DOP' })
   @IsOptional()
   @IsString()
+  @Length(3, 3)
+  @Matches(/^[A-Z]{3}$/)
   currency?: string;
 
-  @ApiProperty({ example: 'Salario mensual' })
+  @ApiPropertyOptional({ example: 'Salario mensual' })
   @IsOptional()
   @IsString()
+  @MaxLength(240)
   description?: string;
 
-  @ApiProperty({ example: '2026-05-01' })
+  @ApiPropertyOptional({ example: '2026-05-01' })
+  @IsOptional()
   @IsDateString()
-  date: string;
+  date?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()

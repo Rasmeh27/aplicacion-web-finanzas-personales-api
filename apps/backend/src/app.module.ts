@@ -2,8 +2,12 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { SupabaseModule } from './integrations/supabase/supabase.module';
 
-// Modulos principales del proyecto
+import { AuthModule } from './modules/auth/auth.module';
+import { UserModule } from './modules/user/user.module';
+import { FinancialProfileModule } from './modules/financial-profile/financial-profile.module';
+import { CategoryModule } from './modules/category/category.module';
 import { AccountProfileModule } from './modules/account-profile/account-profile.module';
 import { MovementsModule } from './modules/movements/transaction.module';
 import { PlanningModule } from './modules/planning/budget.module';
@@ -37,7 +41,12 @@ import { UsStockMarketInvestmentModule } from './modules/us-stock-market-investm
     }),
 
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
+    SupabaseModule,
 
+    AuthModule,
+    UserModule,
+    FinancialProfileModule,
+    CategoryModule,
     AccountProfileModule,
     MovementsModule,
     PlanningModule,

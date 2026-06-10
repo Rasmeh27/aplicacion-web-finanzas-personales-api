@@ -8,6 +8,7 @@ import {
   Index,
   JoinColumn,
 } from 'typeorm';
+import { User } from '../../user/entities/user.entity';
 import { Category } from '../../planning/entities/category.entity';
 
 export enum TransactionType {
@@ -17,13 +18,17 @@ export enum TransactionType {
 
 @Entity('movements')
 @Index(['userId', 'date'])
-@Index(['userId', 'type'])
+@Index(['userId', 'type', 'date'])
 export class Transaction {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column({ name: 'user_id' })
   userId: string;
+
+  @ManyToOne(() => User, (user) => user.transactions, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user_id' })
+  user?: User;
 
   @Column({
     type: 'enum',
