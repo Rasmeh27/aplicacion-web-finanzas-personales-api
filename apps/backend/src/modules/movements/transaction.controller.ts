@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   Request,
+  UseGuards,
   HttpCode,
   HttpStatus,
   UnauthorizedException,
@@ -16,9 +17,11 @@ import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagg
 import { TransactionService } from './transaction.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { FilterTransactionDto } from './dto/filter-transaction.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('transactions')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('transactions')
 export class TransactionController {
   constructor(private readonly service: TransactionService) {}
@@ -104,11 +107,6 @@ export class TransactionController {
   private getUserId(req: any): string {
     const userId = req.user?.id ?? req.user?.sub;
     if (userId) return userId;
-
-    const devUserId = req.headers?.['x-user-id'];
-    if (process.env.NODE_ENV !== 'production' && devUserId) {
-      return Array.isArray(devUserId) ? devUserId[0] : devUserId;
-    }
 
     throw new UnauthorizedException('Authenticated user is required');
   }

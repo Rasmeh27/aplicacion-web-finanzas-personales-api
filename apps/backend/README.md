@@ -56,7 +56,7 @@ npm test
 3. Abrir `Authorize` en Swagger.
 4. Pegar el token como `Bearer ACCESS_TOKEN` si Swagger no agrega el prefijo automaticamente.
 
-En desarrollo, los endpoints protegidos tambien aceptan `x-user-id` si no hay JWT y `NODE_ENV` no es `production`.
+Los endpoints protegidos requieren Bearer token. Sin login/token valido deben responder `401 Unauthorized`.
 
 ## Variables usadas en SQL
 

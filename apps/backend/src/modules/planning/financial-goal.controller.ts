@@ -3,14 +3,17 @@ import {
   Controller,
   Post,
   Request,
+  UseGuards,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CreateFinancialGoalDto } from './dto/create-financial-goal.dto';
 import { FinancialGoalService } from './financial-goal.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('financial-goals')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('planning/goals')
 export class FinancialGoalController {
   constructor(private readonly service: FinancialGoalService) {}
@@ -31,11 +34,6 @@ export class FinancialGoalController {
   private getUserId(req: any): string {
     const userId = req.user?.id ?? req.user?.sub;
     if (userId) return userId;
-
-    const devUserId = req.headers?.['x-user-id'];
-    if (process.env.NODE_ENV !== 'production' && devUserId) {
-      return Array.isArray(devUserId) ? devUserId[0] : devUserId;
-    }
 
     throw new UnauthorizedException('Authenticated user is required');
   }
