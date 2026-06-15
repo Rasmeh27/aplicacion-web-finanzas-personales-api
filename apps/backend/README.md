@@ -12,7 +12,7 @@ Este README resume los casos de uso implementados en el backend API y como proba
 
 ## Configuracion local
 
-Crear `apps/api/.env` con valores reales. No subir este archivo al repo.
+Crear `apps/backend/.env` con valores reales. No subir este archivo al repo.
 
 ```env
 NODE_ENV=development
@@ -29,7 +29,7 @@ SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 ## Ejecutar
 
 ```bash
-cd apps/api
+cd apps/backend
 npm run build
 npm run start
 ```
@@ -389,7 +389,7 @@ order by m.created_at desc;
 ## Validaciones tecnicas
 
 ```bash
-cd apps/api
+cd apps/backend
 npm run build
 npm test -- --runInBand
 ```
@@ -398,5 +398,5 @@ npm test -- --runInBand
 
 - Usar `/api/v1/movements`, no `/api/v1/transactions`.
 - No subir `.env`.
-- `apps/api/.env.example` documenta las variables requeridas.
+- `apps/backend/.env.example` documenta las variables requeridas.
 - Las tablas de Supabase usadas por estos casos son `auth.users`, `public.profiles` y `public.movements`.

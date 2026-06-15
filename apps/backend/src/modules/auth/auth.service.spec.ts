@@ -1,4 +1,5 @@
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { AuthError } from '@supabase/supabase-js';
 import { SupabaseService } from '../../integrations/supabase/supabase.service';
 import { User } from '../user/entities/user.entity';
@@ -56,7 +57,7 @@ describe('AuthService', () => {
 
   describe('register', () => {
     it('registers with Supabase Auth and creates a profile', async () => {
-      (supabase.client.auth.signUp as jest.Mock).mockResolvedValue({
+      (supabase.client.auth.signUp as jest.MockedFunction<() => Promise<any>>).mockResolvedValue({
         data: { user: supabaseUser, session },
         error: null,
       });
@@ -102,7 +103,7 @@ describe('AuthService', () => {
     });
 
     it('rejects an already registered email', async () => {
-      (supabase.client.auth.signUp as jest.Mock).mockResolvedValue({
+      (supabase.client.auth.signUp as jest.MockedFunction<() => Promise<any>>).mockResolvedValue({
         data: { user: null, session: null },
         error: new AuthError('User already registered'),
       });
@@ -115,7 +116,9 @@ describe('AuthService', () => {
 
   describe('login', () => {
     it('returns Supabase tokens for valid credentials', async () => {
-      (supabase.client.auth.signInWithPassword as jest.Mock).mockResolvedValue({
+      (
+        supabase.client.auth.signInWithPassword as jest.MockedFunction<() => Promise<any>>
+      ).mockResolvedValue({
         data: { user: supabaseUser, session },
         error: null,
       });
@@ -131,7 +134,9 @@ describe('AuthService', () => {
     });
 
     it('rejects invalid credentials', async () => {
-      (supabase.client.auth.signInWithPassword as jest.Mock).mockResolvedValue({
+      (
+        supabase.client.auth.signInWithPassword as jest.MockedFunction<() => Promise<any>>
+      ).mockResolvedValue({
         data: { user: null, session: null },
         error: new AuthError('Invalid login credentials'),
       });
