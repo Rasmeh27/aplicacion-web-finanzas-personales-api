@@ -1,4 +1,4 @@
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, HttpException, UnauthorizedException } from '@nestjs/common';
 import { AuthError } from '@supabase/supabase-js';
 import { SupabaseService } from '../../integrations/supabase/supabase.service';
 import { User } from '../user/entities/user.entity';
@@ -63,19 +63,21 @@ describe('AuthService', () => {
       userService.upsertProfile.mockResolvedValue(profile);
 
       const result = await service.register({
-        email: 'ana@example.com',
+        email: ' Ana@Example.COM ',
         password: 'Str0ngP@ssword',
-        firstName: 'Ana',
-        lastName: 'Perez',
-        primaryCurrency: 'DOP',
-        monthlyIncomeEstimate: 45000,
-        monthlySavingTargetPct: 20,
+        fullName: 'Ana Perez',
       });
 
       expect(supabase.client.auth.signUp).toHaveBeenCalledWith(
         expect.objectContaining({
           email: 'ana@example.com',
           password: 'Str0ngP@ssword',
+          options: {
+            emailRedirectTo: 'http://localhost:3000/auth/email-confirmed',
+            data: {
+              full_name: 'Ana Perez',
+            },
+          },
         }),
       );
       expect(userService.upsertProfile).toHaveBeenCalledWith(
@@ -83,11 +85,12 @@ describe('AuthService', () => {
         expect.objectContaining({
           fullName: 'Ana Perez',
           primaryCurrency: 'DOP',
-          monthlyIncomeEstimate: 45000,
+          monthlyIncomeEstimate: 0,
           monthlySavingTargetPct: 20,
         }),
       );
       expect(result).toEqual({
+        status: 'authenticated',
         accessToken: 'access-token',
         refreshToken: 'refresh-token',
         user: {
@@ -97,7 +100,51 @@ describe('AuthService', () => {
           primaryCurrency: 'DOP',
           monthlyIncomeEstimate: 45000,
           monthlySavingTargetPct: 20,
+          monthlySavingTargetAmount: null,
+          monthlyFixedExpenseEstimate: 0,
+          monthlyVariableExpenseEstimate: 0,
+          onboardingCompletedAt: null,
+          onboardingVersion: 1,
         },
+      });
+    });
+
+    it('returns email confirmation required when Supabase does not create a session', async () => {
+      (supabase.client.auth.signUp as jest.Mock).mockResolvedValue({
+        data: { user: supabaseUser, session: null },
+        error: null,
+      });
+      userService.upsertProfile.mockResolvedValue(profile);
+
+      const result = await service.register({
+        email: 'Ana@Example.COM',
+        password: 'Str0ngP@ssword',
+        fullName: 'Ana Perez',
+      });
+
+      expect(supabase.client.auth.signUp).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'ana@example.com',
+        }),
+      );
+      expect(result).toEqual({
+        status: 'email_confirmation_required',
+        accessToken: null,
+        refreshToken: null,
+        user: {
+          id: 'user-1',
+          email: 'ana@example.com',
+          fullName: 'Ana Perez',
+          primaryCurrency: 'DOP',
+          monthlyIncomeEstimate: 45000,
+          monthlySavingTargetPct: 20,
+          monthlySavingTargetAmount: null,
+          monthlyFixedExpenseEstimate: 0,
+          monthlyVariableExpenseEstimate: 0,
+          onboardingCompletedAt: null,
+          onboardingVersion: 1,
+        },
+        message: 'Cuenta creada. Revisa tu correo para confirmar tu cuenta antes de iniciar sesión.',
       });
     });
 
@@ -108,8 +155,25 @@ describe('AuthService', () => {
       });
 
       await expect(
-        service.register({ email: 'ana@example.com', password: 'Str0ngP@ssword' }),
+        service.register({ email: 'ana@example.com', password: 'Str0ngP@ssword', fullName: 'Ana Perez' }),
       ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('maps Supabase email rate limit errors to too many requests', async () => {
+      (supabase.client.auth.signUp as jest.Mock).mockResolvedValue({
+        data: { user: null, session: null },
+        error: { message: 'email rate limit exceeded', status: 429 },
+      });
+
+      await expect(
+        service.register({ email: 'ana@example.com', password: 'Str0ngP@ssword', fullName: 'Ana Perez' }),
+      ).rejects.toBeInstanceOf(HttpException);
+
+      await service
+        .register({ email: 'ana@example.com', password: 'Str0ngP@ssword', fullName: 'Ana Perez' })
+        .catch((error: HttpException) => {
+          expect(error.getStatus()).toBe(429);
+        });
     });
   });
 
@@ -122,10 +186,15 @@ describe('AuthService', () => {
       userService.upsertProfile.mockResolvedValue(profile);
 
       const result = await service.login({
-        email: 'ana@example.com',
+        email: ' Ana@Example.COM ',
         password: 'Str0ngP@ssword',
       });
 
+      expect(supabase.client.auth.signInWithPassword).toHaveBeenCalledWith({
+        email: 'ana@example.com',
+        password: 'Str0ngP@ssword',
+      });
+      expect(result.status).toBe('authenticated');
       expect(result.accessToken).toBe('access-token');
       expect(result.refreshToken).toBe('refresh-token');
     });
@@ -139,6 +208,30 @@ describe('AuthService', () => {
       await expect(
         service.login({ email: 'ana@example.com', password: 'wrong-password' }),
       ).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+
+    it('rejects unconfirmed email with a distinct error', async () => {
+      (supabase.client.auth.signInWithPassword as jest.Mock).mockResolvedValue({
+        data: { user: null, session: null },
+        error: { code: 'email_not_confirmed', message: 'Email not confirmed' },
+      });
+
+      await expect(
+        service.login({ email: 'ana@example.com', password: 'Str0ngP@ssword' }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+  });
+
+  describe('forgotPassword', () => {
+    it('normalizes email before requesting the reset link', async () => {
+      (supabase.client.auth.resetPasswordForEmail as jest.Mock).mockResolvedValue({
+        data: {},
+        error: null,
+      });
+
+      await service.forgotPassword(' Ana@Example.COM ');
+
+      expect(supabase.client.auth.resetPasswordForEmail).toHaveBeenCalledWith('ana@example.com');
     });
   });
 

@@ -1,4 +1,12 @@
-import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { SupabaseService } from '../../integrations/supabase/supabase.service';
 import { UserService } from '../user/user.service';
@@ -6,6 +14,46 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { User } from '../user/entities/user.entity';
+
+const REGISTER_PROFILE_DEFAULTS = {
+  primaryCurrency: 'DOP',
+  monthlyIncomeEstimate: 0,
+  monthlySavingTargetPct: 20,
+};
+
+const EMAIL_CONFIRMATION_REQUIRED_MESSAGE =
+  'Cuenta creada. Revisa tu correo para confirmar tu cuenta antes de iniciar sesión.';
+
+type AuthUserResponse = {
+  id: string;
+  email: string | undefined;
+  fullName: string;
+  primaryCurrency: string;
+  monthlyIncomeEstimate: number;
+  monthlySavingTargetPct: number;
+  monthlySavingTargetAmount: number | null;
+  monthlyFixedExpenseEstimate: number;
+  monthlyVariableExpenseEstimate: number;
+  onboardingCompletedAt: string | null;
+  onboardingVersion: number;
+};
+
+type AuthenticatedResponse = {
+  status: 'authenticated';
+  accessToken: string;
+  refreshToken: string;
+  user: AuthUserResponse;
+};
+
+type EmailConfirmationRequiredResponse = {
+  status: 'email_confirmation_required';
+  accessToken: null;
+  refreshToken: null;
+  user: AuthUserResponse;
+  message: string;
+};
+
+type AuthResponse = AuthenticatedResponse | EmailConfirmationRequiredResponse;
 
 @Injectable()
 export class AuthService {
@@ -15,11 +63,18 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
+    const email = this.normalizeEmail(dto.email);
     const fullName = this.userService.buildFullName(dto.firstName, dto.lastName, dto.fullName);
+
+    if (!fullName) {
+      throw new BadRequestException('Full name is required');
+    }
+
     const { data, error } = await this.supabase.client.auth.signUp({
-      email: dto.email,
+      email,
       password: dto.password,
       options: {
+        emailRedirectTo: this.buildEmailConfirmationRedirectUrl(),
         data: {
           full_name: fullName,
         },
@@ -30,6 +85,17 @@ export class AuthService {
       if (/already|registered|exists/i.test(error.message)) {
         throw new ConflictException('Email already registered');
       }
+
+      if (this.isRateLimitError(error)) {
+        throw new HttpException(
+          {
+            code: 'email_rate_limit_exceeded',
+            message: 'Demasiados intentos de registro. Espera unos minutos antes de volver a intentarlo.',
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+
       throw new BadRequestException(error.message);
     }
 
@@ -39,21 +105,35 @@ export class AuthService {
 
     const profile = await this.userService.upsertProfile(data.user.id, {
       fullName,
-      primaryCurrency: dto.primaryCurrency ?? dto.currency,
-      monthlyIncomeEstimate: dto.monthlyIncomeEstimate,
-      monthlySavingTargetPct: dto.monthlySavingTargetPct,
+      ...REGISTER_PROFILE_DEFAULTS,
     });
+
+    if (!data.session) {
+      return this.formatEmailConfirmationRequiredResponse(data.user, profile);
+    }
 
     return this.formatAuthResponse(data.session, data.user, profile);
   }
 
   async login(dto: LoginDto) {
+    const email = this.normalizeEmail(dto.email);
     const { data, error } = await this.supabase.client.auth.signInWithPassword({
-      email: dto.email,
+      email,
       password: dto.password,
     });
 
-    if (error || !data.user || !data.session) {
+    if (error) {
+      if (this.isEmailNotConfirmedError(error)) {
+        throw new ForbiddenException({
+          code: 'email_not_confirmed',
+          message: 'Debes confirmar tu correo antes de iniciar sesion.',
+        });
+      }
+
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (!data.user || !data.session) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -75,32 +155,81 @@ export class AuthService {
   }
 
   async forgotPassword(email: string) {
-    await this.supabase.client.auth.resetPasswordForEmail(email);
+    await this.supabase.client.auth.resetPasswordForEmail(this.normalizeEmail(email));
     return { message: 'If that email exists, a reset link was sent.' };
   }
 
-  async resetPassword(dto: ResetPasswordDto) {
+  async resetPassword(_dto: ResetPasswordDto) {
     // TODO: validate reset token & update password
     return { message: 'Password updated successfully.' };
   }
 
-  async logout(refreshToken: string) {
+  async logout(_refreshToken: string) {
     // TODO: revoke refresh token with Supabase admin/service role when available.
     return { message: 'Logged out successfully.' };
   }
 
-  private formatAuthResponse(session: Session | null, user: SupabaseUser, profile: User) {
+  private normalizeEmail(email: string): string {
+    return email.trim().toLowerCase();
+  }
+
+  private buildEmailConfirmationRedirectUrl(): string {
+    const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3000';
+    return `${frontendUrl.replace(/\/$/, '')}/auth/email-confirmed`;
+  }
+
+  private isEmailNotConfirmedError(error: { code?: string; message?: string }): boolean {
+    return error.code === 'email_not_confirmed' || /email.*not.*confirm|confirm.*email/i.test(error.message ?? '');
+  }
+
+  private isRateLimitError(error: { code?: string; message?: string; status?: number }): boolean {
+    return (
+      error.status === 429 ||
+      error.code === 'over_email_send_rate_limit' ||
+      /rate limit|too many/i.test(error.message ?? '')
+    );
+  }
+
+  private formatAuthResponse(session: Session, user: SupabaseUser, profile: User): AuthResponse {
     return {
-      accessToken: session?.access_token ?? null,
-      refreshToken: session?.refresh_token ?? null,
-      user: {
-        id: user.id,
-        email: user.email,
-        fullName: profile.fullName,
-        primaryCurrency: profile.primaryCurrency,
-        monthlyIncomeEstimate: Number(profile.monthlyIncomeEstimate),
-        monthlySavingTargetPct: Number(profile.monthlySavingTargetPct),
-      },
+      status: 'authenticated',
+      accessToken: session.access_token,
+      refreshToken: session.refresh_token,
+      user: this.formatUserResponse(user, profile),
+    };
+  }
+
+  private formatEmailConfirmationRequiredResponse(
+    user: SupabaseUser,
+    profile: User,
+  ): EmailConfirmationRequiredResponse {
+    return {
+      status: 'email_confirmation_required',
+      accessToken: null,
+      refreshToken: null,
+      user: this.formatUserResponse(user, profile),
+      message: EMAIL_CONFIRMATION_REQUIRED_MESSAGE,
+    };
+  }
+
+  private formatUserResponse(user: SupabaseUser, profile: User): AuthUserResponse {
+    return {
+      id: user.id,
+      email: user.email,
+      fullName: profile.fullName,
+      primaryCurrency: profile.primaryCurrency,
+      monthlyIncomeEstimate: Number(profile.monthlyIncomeEstimate),
+      monthlySavingTargetPct: Number(profile.monthlySavingTargetPct),
+      monthlySavingTargetAmount:
+        profile.monthlySavingTargetAmount === null || profile.monthlySavingTargetAmount === undefined
+          ? null
+          : Number(profile.monthlySavingTargetAmount),
+      monthlyFixedExpenseEstimate: Number(profile.monthlyFixedExpenseEstimate ?? 0),
+      monthlyVariableExpenseEstimate: Number(profile.monthlyVariableExpenseEstimate ?? 0),
+      onboardingCompletedAt: profile.onboardingCompletedAt
+        ? new Date(profile.onboardingCompletedAt).toISOString()
+        : null,
+      onboardingVersion: Number(profile.onboardingVersion ?? 1),
     };
   }
 }

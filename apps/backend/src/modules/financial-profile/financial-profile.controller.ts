@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Put, Request, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CompleteFinancialOnboardingDto } from './dto/complete-financial-onboarding.dto';
 import { UpdateFinancialProfileDto } from './dto/update-financial-profile.dto';
 import { FinancialProfileService } from './financial-profile.service';
 
@@ -19,5 +20,10 @@ export class FinancialProfileController {
   @Put('me')
   configureBasicProfile(@Request() req: any, @Body() dto: UpdateFinancialProfileDto) {
     return this.service.upsertBasicProfile(req.user.id, dto);
+  }
+
+  @Put('onboarding')
+  completeOnboarding(@Request() req: any, @Body() dto: CompleteFinancialOnboardingDto) {
+    return this.service.completeOnboarding(req.user.id, dto);
   }
 }

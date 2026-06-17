@@ -33,6 +33,39 @@ export class User {
   })
   monthlySavingTargetPct: number;
 
+  @Column({
+    name: 'monthly_saving_target_amount',
+    type: 'numeric',
+    precision: 14,
+    scale: 2,
+    nullable: true,
+  })
+  monthlySavingTargetAmount: number | null;
+
+  @Column({
+    name: 'monthly_fixed_expense_estimate',
+    type: 'numeric',
+    precision: 14,
+    scale: 2,
+    default: 0,
+  })
+  monthlyFixedExpenseEstimate: number;
+
+  @Column({
+    name: 'monthly_variable_expense_estimate',
+    type: 'numeric',
+    precision: 14,
+    scale: 2,
+    default: 0,
+  })
+  monthlyVariableExpenseEstimate: number;
+
+  @Column({ name: 'onboarding_completed_at', type: 'timestamptz', nullable: true })
+  onboardingCompletedAt: Date | null;
+
+  @Column({ name: 'onboarding_version', type: 'int', default: 1 })
+  onboardingVersion: number;
+
   @OneToMany(() => Transaction, (t) => t.user)
   transactions: Transaction[];
 

@@ -12,7 +12,7 @@ Este README resume los casos de uso implementados en el backend API y como proba
 
 ## Configuracion local
 
-Crear `apps/api/.env` con valores reales. No subir este archivo al repo.
+Crear `apps/backend/.env` con valores reales. No subir este archivo al repo.
 
 ```env
 NODE_ENV=development
@@ -29,7 +29,7 @@ SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 ## Ejecutar
 
 ```bash
-cd apps/api
+cd apps/backend
 npm run build
 npm run start
 ```
@@ -65,18 +65,35 @@ Body:
 {
   "email": "usuario.prueba@gmail.com",
   "password": "Test1234!",
-  "fullName": "Usuario Prueba",
-  "primaryCurrency": "DOP",
-  "monthlyIncomeEstimate": 45000,
-  "monthlySavingTargetPct": 20
+  "fullName": "Usuario Prueba"
 }
 ```
 
 Efecto esperado:
 
 - Crea usuario en `auth.users`.
-- Crea/actualiza perfil en `public.profiles`.
-- Si Supabase requiere confirmacion de correo, el usuario queda con `confirmed_at = null` hasta confirmar.
+- Crea/actualiza perfil en `public.profiles` con defaults iniciales (`DOP`, `0`, `20`).
+- Si Supabase requiere confirmacion de correo, responde `status = email_confirmation_required` y no devuelve tokens.
+- Si Supabase devuelve sesion, responde `status = authenticated` con `accessToken` y `refreshToken`.
+
+Respuesta cuando requiere confirmacion:
+
+```json
+{
+  "status": "email_confirmation_required",
+  "accessToken": null,
+  "refreshToken": null,
+  "message": "Cuenta creada. Revisa tu correo para confirmar tu cuenta antes de iniciar sesión.",
+  "user": {
+    "id": "...",
+    "email": "usuario.prueba@gmail.com",
+    "fullName": "Usuario Prueba",
+    "primaryCurrency": "DOP",
+    "monthlyIncomeEstimate": 0,
+    "monthlySavingTargetPct": 20
+  }
+}
+```
 
 Verificacion SQL:
 
@@ -116,6 +133,7 @@ Respuesta esperada:
 
 ```json
 {
+  "status": "authenticated",
   "accessToken": "...",
   "refreshToken": "...",
   "user": {
@@ -128,6 +146,17 @@ Respuesta esperada:
   }
 }
 ```
+
+Si el correo aun no esta confirmado, responde `403` con:
+
+```json
+{
+  "code": "email_not_confirmed",
+  "message": "Debes confirmar tu correo antes de iniciar sesion."
+}
+```
+
+Si el correo o password son incorrectos, responde `401 Invalid credentials`.
 
 ## CU-003 Cerrar sesion
 
@@ -389,7 +418,7 @@ order by m.created_at desc;
 ## Validaciones tecnicas
 
 ```bash
-cd apps/api
+cd apps/backend
 npm run build
 npm test -- --runInBand
 ```
@@ -398,5 +427,5 @@ npm test -- --runInBand
 
 - Usar `/api/v1/movements`, no `/api/v1/transactions`.
 - No subir `.env`.
-- `apps/api/.env.example` documenta las variables requeridas.
+- `apps/backend/.env.example` documenta las variables requeridas.
 - Las tablas de Supabase usadas por estos casos son `auth.users`, `public.profiles` y `public.movements`.

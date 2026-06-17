@@ -32,10 +32,10 @@ export class RegisterDto {
   @IsString()
   lastName?: string;
 
-  @ApiPropertyOptional({ example: 'Ana Perez' })
-  @IsOptional()
+  @ApiProperty({ example: 'Ana Perez' })
   @IsString()
-  fullName?: string;
+  @MinLength(2)
+  fullName: string;
 
   @ApiPropertyOptional({ example: 'DOP' })
   @IsOptional()
