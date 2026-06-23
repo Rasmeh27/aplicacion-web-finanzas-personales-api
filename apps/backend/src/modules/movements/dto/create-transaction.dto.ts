@@ -11,15 +11,34 @@ import {
   Matches,
   MaxLength,
   Min,
+  Validate,
 } from 'class-validator';
-import { TransactionType } from '../entities/transaction.entity';
+import {
+  TransactionClassification,
+  TransactionType,
+} from '../entities/transaction.entity';
+import { IsTypeCoherentWithClassificationConstraint } from '../validators/classification-type.validator';
 
 export class CreateTransactionDto {
-  @ApiProperty({ enum: TransactionType })
-  @IsEnum(TransactionType)
-  type: TransactionType;
+  @ApiProperty({
+    enum: TransactionClassification,
+    description:
+      'Clasificación de finanzas personales. Determina el tipo (income/expense).',
+  })
+  @IsEnum(TransactionClassification)
+  classification: TransactionClassification;
 
-  @ApiProperty({ example: 1500.00 })
+  @ApiPropertyOptional({
+    enum: TransactionType,
+    description:
+      'Opcional. Si se envía debe ser coherente con la clasificación; si se omite se deriva automáticamente.',
+  })
+  @IsOptional()
+  @IsEnum(TransactionType)
+  @Validate(IsTypeCoherentWithClassificationConstraint)
+  type?: TransactionType;
+
+  @ApiProperty({ example: 1500.0 })
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0.01)
@@ -38,12 +57,18 @@ export class CreateTransactionDto {
   @MaxLength(240)
   description?: string;
 
+  @ApiPropertyOptional({ example: 'Pago vía transferencia' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  notes?: string;
+
   @ApiPropertyOptional({ example: '2026-05-01' })
   @IsOptional()
   @IsDateString()
   date?: string;
 
-  @ApiProperty({ required: false })
+  @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
   @IsUUID()
   categoryId?: string;

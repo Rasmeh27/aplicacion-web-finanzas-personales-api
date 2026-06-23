@@ -1,9 +1,11 @@
 import {
   IsEnum,
   IsOptional,
+  IsString,
   IsUUID,
   IsDateString,
   IsInt,
+  MaxLength,
   Min,
   Max,
   ValidatorConstraint,
@@ -13,7 +15,10 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { TransactionType } from '../entities/transaction.entity';
+import {
+  TransactionClassification,
+  TransactionType,
+} from '../entities/transaction.entity';
 
 /**
  * Valida que startDate sea menor o igual a endDate cuando ambas fechas existen.
@@ -56,6 +61,15 @@ export class FilterTransactionDto {
   type?: TransactionType;
 
   @ApiPropertyOptional({
+    enum: TransactionClassification,
+    description: 'Filtrar por clasificación de finanzas personales',
+    example: 'fixed_expense',
+  })
+  @IsOptional()
+  @IsEnum(TransactionClassification)
+  classification?: TransactionClassification;
+
+  @ApiPropertyOptional({
     format: 'uuid',
     description: 'Filtrar por ID de categoría',
     example: '550e8400-e29b-41d4-a716-446655440000',
@@ -63,6 +77,15 @@ export class FilterTransactionDto {
   @IsOptional()
   @IsUUID()
   categoryId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Búsqueda por descripción o comercio',
+    example: 'supermercado',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  search?: string;
 
   @ApiPropertyOptional({
     format: 'date',

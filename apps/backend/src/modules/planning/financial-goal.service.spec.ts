@@ -2,12 +2,14 @@ import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { CreateFinancialGoalDto } from './dto/create-financial-goal.dto';
 import {
   FinancialGoal,
   FinancialGoalStatus,
 } from './entities/financial-goal.entity';
+import { GoalContribution } from './entities/goal-contribution.entity';
+import { User } from '../user/entities/user.entity';
 import { FinancialGoalService } from './financial-goal.service';
 import { CreateFinancialGoalUseCase } from './use-cases/cu-015-create-financial-goal.use-case';
 
@@ -40,6 +42,31 @@ describe('FinancialGoalService - Financial goals (CU-015)', () => {
               createdAt: new Date('2026-06-03T00:00:00.000Z'),
               updatedAt: new Date('2026-06-03T00:00:00.000Z'),
             })),
+            find: jest.fn(),
+            findOne: jest.fn(),
+            count: jest.fn(),
+            update: jest.fn(),
+            delete: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(GoalContribution),
+          useValue: {
+            create: jest.fn(),
+            save: jest.fn(),
+            find: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(User),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
+        {
+          provide: DataSource,
+          useValue: {
+            transaction: jest.fn(),
           },
         },
       ],

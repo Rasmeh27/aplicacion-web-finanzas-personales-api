@@ -5,9 +5,13 @@ import { Category } from './entities/category.entity';
 import { Debt } from './entities/debt.entity';
 import { DebtPayment } from './entities/debt-payment.entity';
 import { FinancialGoal } from './entities/financial-goal.entity';
+import { GoalContribution } from './entities/goal-contribution.entity';
 import { Transaction } from '../movements/entities/transaction.entity';
+import { User } from '../user/entities/user.entity';
 import { BudgetController } from './budget.controller';
 import { BudgetService } from './budget.service';
+import { BudgetsController } from './budgets/budgets.controller';
+import { BudgetsService } from './budgets/budgets.service';
 import { DebtController } from './debt.controller';
 import { DebtService } from './debt.service';
 import { FinancialGoalController } from './financial-goal.controller';
@@ -27,13 +31,16 @@ import { CalculateDebtIncomeRatioUseCase } from './use-cases/cu-018-calculate-de
       Category,
       Transaction,
       FinancialGoal,
+      GoalContribution,
       Debt,
       DebtPayment,
+      User,
     ]),
   ],
-  controllers: [BudgetController, FinancialGoalController, DebtController],
+  controllers: [BudgetController, BudgetsController, FinancialGoalController, DebtController],
   providers: [
     BudgetService,
+    BudgetsService,
     FinancialGoalService,
     DebtService,
     CreateMonthlyBudgetUseCase,
@@ -44,6 +51,6 @@ import { CalculateDebtIncomeRatioUseCase } from './use-cases/cu-018-calculate-de
     RegisterDebtPaymentUseCase,
     CalculateDebtIncomeRatioUseCase,
   ],
-  exports: [BudgetService, FinancialGoalService, DebtService],
+  exports: [BudgetService, BudgetsService, FinancialGoalService, DebtService],
 })
 export class PlanningModule {}

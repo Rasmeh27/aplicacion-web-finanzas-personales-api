@@ -5,6 +5,7 @@ import { BadRequestException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import {
   Transaction,
+  TransactionClassification,
   TransactionType,
 } from './entities/transaction.entity';
 import { TransactionService } from './transaction.service';
@@ -31,9 +32,11 @@ describe('TransactionService - Filtering (CU-011)', () => {
     id: '550e8400-e29b-41d4-a716-446655440000',
     userId,
     type: TransactionType.EXPENSE,
+    classification: TransactionClassification.VARIABLE_EXPENSE,
     amount: 50,
     currency: 'DOP',
     description: 'Test transaction',
+    notes: null as any,
     date: '2026-05-15',
     categoryId,
     category: { id: categoryId, name: 'Alimentación' } as any,

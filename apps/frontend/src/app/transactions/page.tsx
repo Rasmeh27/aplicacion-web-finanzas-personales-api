@@ -1,10 +1,10 @@
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout';
-import { ComingSoon } from '@/features/dashboard/components/ComingSoon';
+import { TransactionsView } from '@/features/transactions/components/TransactionsView';
 
 export default function TransactionsPage() {
   return (
     <DashboardLayout>
-      <ComingSoon titleKey="nav.transactions" />
+      <TransactionsView />
     </DashboardLayout>
   );
 }

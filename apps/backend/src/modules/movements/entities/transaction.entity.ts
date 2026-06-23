@@ -10,15 +10,19 @@ import {
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { Category } from '../../planning/entities/category.entity';
+import { TransactionClassification, TransactionType } from './transaction.enums';
 
-export enum TransactionType {
-  INCOME = 'income',
-  EXPENSE = 'expense',
-}
+// Re-export para mantener los imports existentes desde la entidad.
+export {
+  CLASSIFICATION_TO_TYPE,
+  TransactionClassification,
+  TransactionType,
+} from './transaction.enums';
 
 @Entity('movements')
 @Index(['userId', 'date'])
 @Index(['userId', 'type', 'date'])
+@Index(['userId', 'classification', 'date'])
 export class Transaction {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -37,6 +41,13 @@ export class Transaction {
   })
   type: TransactionType;
 
+  @Column({
+    type: 'enum',
+    enum: TransactionClassification,
+    enumName: 'transaction_classification',
+  })
+  classification: TransactionClassification;
+
   @Column({ type: 'decimal', precision: 12, scale: 2 })
   amount: number;
 
@@ -45,6 +56,9 @@ export class Transaction {
 
   @Column({ type: 'text', nullable: true })
   description: string;
+
+  @Column({ type: 'text', nullable: true })
+  notes: string;
 
   @Column({ name: 'movement_date', type: 'date' })
   date: string;

@@ -1,10 +1,10 @@
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout';
-import { ComingSoon } from '@/features/dashboard/components/ComingSoon';
+import { GoalsView } from '@/features/goals/components/GoalsView';
 
 export default function GoalsPage() {
   return (
     <DashboardLayout>
-      <ComingSoon titleKey="nav.goals" />
+      <GoalsView />
     </DashboardLayout>
   );
 }
