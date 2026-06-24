@@ -16,7 +16,7 @@ const menuItems = [
 
 export function AuthMarketingPanel({ title, variant = 'login' }: AuthMarketingPanelProps) {
   return (
-    <aside className="relative hidden overflow-hidden rounded-[2.25rem] bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 p-10 text-white shadow-2xl shadow-indigo-700/25 lg:flex lg:min-h-[760px] lg:flex-col">
+    <aside className="relative flex min-h-[760px] flex-col overflow-hidden rounded-[2.25rem] bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 p-10 text-white shadow-2xl shadow-indigo-700/25 max-lg:hidden">
       <div className="absolute inset-x-0 bottom-0 h-64 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.35),transparent_45%),linear-gradient(135deg,rgba(255,255,255,0.22),transparent_50%)]" />
       <div className="absolute -right-24 top-28 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
       <div className="absolute -bottom-28 left-16 h-80 w-80 rounded-full bg-cyan-200/20 blur-3xl" />

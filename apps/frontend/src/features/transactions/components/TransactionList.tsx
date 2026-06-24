@@ -128,7 +128,7 @@ export function TransactionList({ transactions, loading, onEdit, onView, onDelet
       ) : (
         <>
           {/* Desktop: tabla */}
-          <table className="hidden w-full text-left text-sm md:table">
+          <table className="w-full text-left text-sm max-md:hidden">
             <thead>
               <tr className="border-b border-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-400">
                 <th className="px-5 py-3">Descripción</th>

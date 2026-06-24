@@ -115,7 +115,7 @@ export function Sidebar() {
   return (
     <>
       {/* Desktop: fixed left rail */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[280px] flex-col border-r border-slate-200 bg-white shadow-sm lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 flex w-[280px] flex-col border-r border-slate-200 bg-white shadow-sm max-lg:hidden">
         <div className="flex items-center gap-2 px-6 py-6">
           <MoniLogo />
           <VersionBadge />
@@ -139,4 +139,3 @@ export function Sidebar() {
     </>
   );
 }
-
