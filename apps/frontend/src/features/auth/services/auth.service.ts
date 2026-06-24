@@ -11,4 +11,8 @@ export const authService = {
     const { data } = await apiClient.post<AuthResponse>('/auth/register', payload);
     return data;
   },
+
+  async logout(refreshToken: string | null): Promise<void> {
+    await apiClient.post('/auth/logout', { refreshToken });
+  },
 };

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { usePathname } from 'next/navigation';
 import {
@@ -12,7 +12,7 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
-import { SmartWalletLogo } from '@/components/auth/SmartWalletLogo';
+import { MoniLogo } from '@/components/auth/MoniLogo';
 import { useAuthStore } from '@/store/slices/auth.store';
 import { cn } from '@/shared/utils/cn';
 import { useTranslation } from '@/shared/i18n/useTranslation';
@@ -117,7 +117,7 @@ export function Sidebar() {
       {/* Desktop: fixed left rail */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[280px] flex-col border-r border-slate-200 bg-white shadow-sm lg:flex">
         <div className="flex items-center gap-2 px-6 py-6">
-          <SmartWalletLogo />
+          <MoniLogo />
           <VersionBadge />
         </div>
 
@@ -131,7 +131,7 @@ export function Sidebar() {
       {/* Mobile: top bar + horizontally scrollable nav */}
       <div className="lg:hidden">
         <div className="flex items-center gap-2 border-b border-slate-200 bg-white px-4 py-3">
-          <SmartWalletLogo />
+          <MoniLogo />
           <VersionBadge />
         </div>
         <nav className="flex gap-1 overflow-x-auto border-b border-slate-200 bg-white px-3 py-2">{renderNav()}</nav>
@@ -139,3 +139,4 @@ export function Sidebar() {
     </>
   );
 }
+

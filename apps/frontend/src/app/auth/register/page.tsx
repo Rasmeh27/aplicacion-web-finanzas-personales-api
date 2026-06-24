@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -78,7 +78,7 @@ export default function RegisterPage() {
         const message = getErrorMessage(data?.message);
 
         if (error.response?.status === 409) {
-          setServerError('Este correo ya esta registrado. Intenta iniciar sesion.');
+          setServerError('Este correo ya está registrado. Intenta iniciar sesión.');
           return;
         }
 
@@ -99,28 +99,28 @@ export default function RegisterPage() {
 
   return (
     <AuthShell
-      helperText="Already have an account?"
+      helperText="¿Ya tienes cuenta?"
       helperHref="/auth/login"
-      helperAction="Login"
-      marketingTitle="Build better money habits from day one"
+      helperAction="Entrar"
+      marketingTitle="Construye mejores hábitos financieros desde el primer día"
       marketingVariant="register"
     >
       <div className="mx-auto mt-12 w-full max-w-2xl lg:mt-16">
         <div>
-          <h1 className="text-5xl font-black tracking-tight text-slate-950 sm:text-6xl">Create Account</h1>
+          <h1 className="text-5xl font-black tracking-tight text-slate-950 sm:text-6xl">Crear cuenta</h1>
           <p className="mt-5 max-w-xl text-lg leading-8 text-slate-500">
-            Start your financial journey with SmartWallet and organize your money with confidence.
+            Empieza tu organización financiera con MONI y administra tu dinero con confianza.
           </p>
         </div>
 
         <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-          <SocialAuthButton icon={<GoogleIcon />}>Sign up with Google</SocialAuthButton>
-          <SocialAuthButton icon={<Apple className="h-5 w-5 text-black" />}>Sign up with Apple</SocialAuthButton>
+          <SocialAuthButton icon={<GoogleIcon />}>Registrarse con Google</SocialAuthButton>
+          <SocialAuthButton icon={<Apple className="h-5 w-5 text-black" />}>Registrarse con Apple</SocialAuthButton>
         </div>
 
         <div className="my-7 flex items-center gap-5 text-sm font-medium text-slate-500">
           <span className="h-px flex-1 bg-slate-200" />
-          or
+          o
           <span className="h-px flex-1 bg-slate-200" />
         </div>
 
@@ -128,10 +128,10 @@ export default function RegisterPage() {
           <div className="grid gap-5 sm:grid-cols-2">
             <AuthTextInput
               id="fullName"
-              label="Full Name"
+              label="Nombre completo"
               type="text"
               autoComplete="name"
-              placeholder="Enter your full name"
+              placeholder="Ingresa tu nombre completo"
               icon={<UserRound className="h-5 w-5" />}
               error={errors.fullName?.message}
               {...register('fullName')}
@@ -139,10 +139,10 @@ export default function RegisterPage() {
 
             <AuthTextInput
               id="email"
-              label="Email"
+              label="Correo"
               type="email"
               autoComplete="email"
-              placeholder="Enter your email"
+              placeholder="Ingresa tu correo"
               icon={<Mail className="h-5 w-5" />}
               error={errors.email?.message}
               {...register('email')}
@@ -152,18 +152,18 @@ export default function RegisterPage() {
           <div className="grid gap-5 sm:grid-cols-2">
             <PasswordInput
               id="password"
-              label="Password"
+              label="Contraseña"
               autoComplete="new-password"
-              placeholder="Enter your password"
+              placeholder="Ingresa tu contraseña"
               error={errors.password?.message}
               {...register('password')}
             />
 
             <PasswordInput
               id="confirmPassword"
-              label="Confirm Password"
+              label="Confirmar contraseña"
               autoComplete="new-password"
-              placeholder="Confirm your password"
+              placeholder="Confirma tu contraseña"
               error={errors.confirmPassword?.message}
               {...register('confirmPassword')}
             />
@@ -177,13 +177,13 @@ export default function RegisterPage() {
                 {...register('acceptTerms')}
               />
               <span>
-                I agree to the{' '}
+                Acepto los{' '}
                 <Link href="/terms" className="font-bold text-blue-600 hover:text-blue-700">
-                  Terms
+                  Términos
                 </Link>{' '}
-                &{' '}
+                y la{' '}
                 <Link href="/privacy" className="font-bold text-blue-600 hover:text-blue-700">
-                  Privacy Policy
+                  Política de privacidad
                 </Link>
               </span>
             </label>
@@ -209,10 +209,12 @@ export default function RegisterPage() {
             disabled={isSubmitting}
             className="h-[60px] w-full rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 text-base font-bold text-white shadow-xl shadow-blue-600/25 transition hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-blue-600/30 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
           >
-            {isSubmitting ? 'Creating account...' : 'Create Account'}
+            {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta'}
           </button>
         </form>
       </div>
     </AuthShell>
   );
 }
+
+

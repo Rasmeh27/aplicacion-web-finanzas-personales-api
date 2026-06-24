@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export type Locale = 'es' | 'en';
@@ -14,6 +14,7 @@ export const useLocaleStore = create<LocaleState>()(
       locale: 'es',
       setLocale: (locale) => set({ locale }),
     }),
-    { name: 'smartwallet-locale' },
+    { name: 'moni-locale' },
   ),
 );
+

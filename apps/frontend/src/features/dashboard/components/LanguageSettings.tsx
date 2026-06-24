@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { Check, Languages } from 'lucide-react';
 import { cn } from '@/shared/utils/cn';
@@ -60,3 +60,4 @@ export function LanguageSettings() {
     </div>
   );
 }
+

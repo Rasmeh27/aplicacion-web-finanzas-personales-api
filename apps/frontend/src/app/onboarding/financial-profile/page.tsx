@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -20,7 +20,7 @@ import {
   type FieldErrors,
   type UseFormRegister,
 } from 'react-hook-form';
-import { SmartWalletLogo } from '@/components/auth/SmartWalletLogo';
+import { MoniLogo } from '@/components/auth/MoniLogo';
 import {
   FINANCIAL_ITEM_FREQUENCIES,
   FREQUENCY_LABELS,
@@ -38,8 +38,8 @@ import {
 import { useAuthStore } from '@/store/slices/auth.store';
 
 const currencyOptions = [
-  { value: 'DOP', label: 'DOP - Dominican peso' },
-  { value: 'USD', label: 'USD - US dollar' },
+  { value: 'DOP', label: 'DOP - Peso dominicano' },
+  { value: 'USD', label: 'USD - Dólar estadounidense' },
   { value: 'EUR', label: 'EUR - Euro' },
 ] as const;
 
@@ -350,7 +350,7 @@ export default function FinancialProfileOnboardingPage() {
       router.replace('/dashboard');
     } catch (error) {
       if (error instanceof AxiosError && error.response?.status === 401) {
-        setServerError('Tu sesion expiro. Inicia sesion nuevamente para continuar.');
+        setServerError('Tu sesión expiró. Inicia sesion nuevamente para continuar.');
         return;
       }
 
@@ -363,7 +363,7 @@ export default function FinancialProfileOnboardingPage() {
       <main className="grid min-h-screen place-items-center bg-[#f5f7fb] px-4 text-slate-950">
         <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-semibold text-slate-600 shadow-xl shadow-slate-950/5">
           <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-          Preparing your profile
+          Preparando tu perfil
         </div>
       </main>
     );
@@ -375,9 +375,9 @@ export default function FinancialProfileOnboardingPage() {
 
       <div className="relative mx-auto w-full max-w-6xl">
         <header className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <SmartWalletLogo />
+          <MoniLogo />
           <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-blue-700">
-            SmartWallet setup
+            Configuración de MONI
           </div>
         </header>
 
@@ -386,14 +386,14 @@ export default function FinancialProfileOnboardingPage() {
             Configura tu perfil financiero
           </h1>
           <p className="mt-4 text-lg leading-8 text-slate-500">
-            Captura tus ingresos y gastos estimados para que SmartWallet personalice tu experiencia. Estos
+            Captura tus ingresos y gastos estimados para que MONI personalice tu experiencia. Estos
             son montos planificados, no transacciones reales.
           </p>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start" noValidate>
           <div className="space-y-6">
-            <SectionCard step="A" title="Configuracion general" description="Define la moneda principal de tu cuenta.">
+            <SectionCard step="A" title="Configuración general" description="Define la moneda principal de tu cuenta.">
               <div className="max-w-sm space-y-2">
                 <label htmlFor="primaryCurrency" className="block text-sm font-semibold text-slate-950">
                   Moneda principal
@@ -447,7 +447,7 @@ export default function FinancialProfileOnboardingPage() {
                 onRemove={(index) => fixed.remove(index)}
                 addLabel="Agregar gasto fijo"
                 namePlaceholders={FIXED_EXPENSE_PLACEHOLDERS}
-                emptyHint="Aun no has agregado gastos fijos. Son opcionales, pero ayudan a estimar tu balance."
+                emptyHint="Aún no has agregado gastos fijos. Son opcionales, pero ayudan a estimar tu balance."
               />
             </SectionCard>
 
@@ -465,7 +465,7 @@ export default function FinancialProfileOnboardingPage() {
                 onRemove={(index) => variable.remove(index)}
                 addLabel="Agregar gasto variable"
                 namePlaceholders={VARIABLE_EXPENSE_PLACEHOLDERS}
-                emptyHint="Aun no has agregado gastos variables. Son opcionales y puedes ajustarlos luego."
+                emptyHint="Aún no has agregado gastos variables. Son opcionales y puedes ajustarlos luego."
               />
             </SectionCard>
 
@@ -511,7 +511,7 @@ export default function FinancialProfileOnboardingPage() {
                 </div>
               </div>
               <p className="mt-3 text-xs text-slate-500">
-                Si defines un monto, se usara ese valor. Si solo defines un porcentaje, se calculara sobre tus
+                Si defines un monto, se usará ese valor. Si solo defines un porcentaje, se calculará sobre tus
                 ingresos mensuales estimados.
               </p>
             </SectionCard>
@@ -559,7 +559,7 @@ export default function FinancialProfileOnboardingPage() {
                     Meta de ahorro
                   </dt>
                   <dd className="font-black text-blue-700">
-                    {savingTarget === null ? '—' : formatMoney(savingTarget)}
+                    {savingTarget === null ? '-' : formatMoney(savingTarget)}
                   </dd>
                 </div>
               </dl>
@@ -594,3 +594,5 @@ export default function FinancialProfileOnboardingPage() {
     </main>
   );
 }
+
+

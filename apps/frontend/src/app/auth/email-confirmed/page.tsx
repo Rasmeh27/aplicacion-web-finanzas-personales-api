@@ -1,9 +1,9 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { CheckCircle2 } from 'lucide-react';
 import { useEffect } from 'react';
-import { SmartWalletLogo } from '@/components/auth/SmartWalletLogo';
+import { MoniLogo } from '@/components/auth/MoniLogo';
 
 export default function EmailConfirmedPage() {
   useEffect(() => {
@@ -18,7 +18,7 @@ export default function EmailConfirmedPage() {
 
       <section className="relative w-full max-w-lg rounded-[2.25rem] border border-white/80 bg-white/90 px-6 py-10 text-center shadow-2xl shadow-slate-950/10 backdrop-blur-xl sm:px-12 sm:py-14">
         <header className="flex justify-center">
-          <SmartWalletLogo />
+          <MoniLogo />
         </header>
 
         <div className="mt-10 flex justify-center">
@@ -42,3 +42,5 @@ export default function EmailConfirmedPage() {
     </main>
   );
 }
+
+

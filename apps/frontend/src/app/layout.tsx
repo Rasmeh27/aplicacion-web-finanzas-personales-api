@@ -1,12 +1,12 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'SmartWallet — Finanzas Personales',
-  description: 'Gestiona tus finanzas personales con inteligencia.',
+  title: 'MONI - Finanzas personales',
+  description: 'Gestiona tus ingresos, gastos, metas y presupuestos desde un solo lugar.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

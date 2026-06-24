@@ -1,4 +1,4 @@
-import type { Locale } from '@/store/slices/locale.store';
+﻿import type { Locale } from '@/store/slices/locale.store';
 
 export type TranslationKey =
   | 'common.loading'
@@ -108,7 +108,7 @@ const es: Dictionary = {
   'category.variableExpenses': 'Gastos variables',
   'category.savingTarget': 'Ahorro meta',
   'category.freeBalance': 'Balance libre',
-  'topCategory.none': '—',
+  'topCategory.none': '-',
 
   'recent.title': 'Movimientos recientes',
   'recent.seeAll': 'Ver todos',
@@ -176,7 +176,7 @@ const en: Dictionary = {
   'category.variableExpenses': 'Variable expenses',
   'category.savingTarget': 'Savings target',
   'category.freeBalance': 'Free balance',
-  'topCategory.none': '—',
+  'topCategory.none': '-',
 
   'recent.title': 'Recent transactions',
   'recent.seeAll': 'See all',
@@ -196,3 +196,4 @@ const en: Dictionary = {
 };
 
 export const translations: Record<Locale, Dictionary> = { es, en };
+

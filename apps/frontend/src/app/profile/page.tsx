@@ -1,10 +1,10 @@
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout';
-import { ComingSoon } from '@/features/dashboard/components/ComingSoon';
+import { ProfileView } from '@/features/profile/components/ProfileView';
 
 export default function ProfilePage() {
   return (
     <DashboardLayout>
-      <ComingSoon titleKey="nav.profile" />
+      <ProfileView />
     </DashboardLayout>
   );
 }

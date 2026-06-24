@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -71,54 +71,54 @@ export default function LoginPage() {
           error.response?.status === 403 &&
           (data?.code === 'email_not_confirmed' || /confirm/i.test(message))
         ) {
-          setServerError('Debes confirmar tu correo antes de iniciar sesion.');
+          setServerError('Debes confirmar tu correo antes de iniciar sesión.');
           return;
         }
 
         if (error.response?.status === 401) {
-          setServerError('Credenciales invalidas. Revisa tu correo y contrasena.');
+          setServerError('Credenciales inválidas. Revisa tu correo y contraseña.');
           return;
         }
       }
 
-      setServerError('No se pudo iniciar sesion. Intenta nuevamente.');
+      setServerError('No se pudo iniciar sesión. Intenta nuevamente.');
     }
   };
 
   return (
     <AuthShell
-      helperText="Don't have an account?"
+      helperText="¿No tienes cuenta?"
       helperHref="/auth/register"
-      helperAction="Sign Up"
-      marketingTitle="The smartest way to take control of your finances"
+      helperAction="Crear cuenta"
+      marketingTitle="Control claro para tus decisiones financieras"
       marketingVariant="login"
     >
       <div className="mx-auto mt-16 w-full max-w-2xl lg:mt-24">
         <div>
-          <h1 className="text-5xl font-black tracking-tight text-slate-950 sm:text-6xl">Welcome Back</h1>
+          <h1 className="text-5xl font-black tracking-tight text-slate-950 sm:text-6xl">Bienvenido de nuevo</h1>
           <p className="mt-5 max-w-md text-lg leading-8 text-slate-500">
-            Sign in to manage your money, budgets, goals, and expenses.
+            Inicia sesión para administrar tu dinero, presupuestos, metas y gastos.
           </p>
         </div>
 
         <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-          <SocialAuthButton icon={<GoogleIcon />}>Log in with Google</SocialAuthButton>
-          <SocialAuthButton icon={<Apple className="h-5 w-5 text-black" />}>Log in with Apple</SocialAuthButton>
+          <SocialAuthButton icon={<GoogleIcon />}>Entrar con Google</SocialAuthButton>
+          <SocialAuthButton icon={<Apple className="h-5 w-5 text-black" />}>Entrar con Apple</SocialAuthButton>
         </div>
 
         <div className="my-8 flex items-center gap-5 text-sm font-medium text-slate-500">
           <span className="h-px flex-1 bg-slate-200" />
-          or
+          o
           <span className="h-px flex-1 bg-slate-200" />
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
           <AuthTextInput
             id="email"
-            label="Email"
+            label="Correo"
             type="email"
             autoComplete="email"
-            placeholder="Enter your email"
+            placeholder="Ingresa tu correo"
             icon={<Mail className="h-5 w-5" />}
             error={errors.email?.message}
             {...register('email')}
@@ -126,16 +126,16 @@ export default function LoginPage() {
 
           <PasswordInput
             id="password"
-            label="Password"
+            label="Contraseña"
             autoComplete="current-password"
-            placeholder="Enter your password"
+            placeholder="Ingresa tu contraseña"
             error={errors.password?.message}
             {...register('password')}
           />
 
           <div className="flex justify-end">
             <Link href="/forgot-password" className="text-sm font-bold text-blue-600 transition hover:text-blue-700">
-              Forgot password?
+              ¿Olvidaste tu contraseña?
             </Link>
           </div>
 
@@ -150,10 +150,12 @@ export default function LoginPage() {
             disabled={isSubmitting}
             className="h-[60px] w-full rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 text-base font-bold text-white shadow-xl shadow-blue-600/25 transition hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-blue-600/30 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
           >
-            {isSubmitting ? 'Signing in...' : 'Login'}
+            {isSubmitting ? 'Iniciando sesión...' : 'Entrar'}
           </button>
         </form>
       </div>
     </AuthShell>
   );
 }
+
+
