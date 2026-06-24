@@ -5,6 +5,7 @@ import {
   Post,
   Query,
   Request,
+  UseGuards,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -12,9 +13,11 @@ import { BudgetService } from './budget.service';
 import { BudgetProgressQueryDto } from './dto/budget-progress-query.dto';
 import { CreateCategoryBudgetDto } from './dto/create-category-budget.dto';
 import { CreateBudgetDto } from './dto/create-budget.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('budgets')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('budget')
 export class BudgetController {
   constructor(private readonly service: BudgetService) {}
@@ -70,11 +73,6 @@ export class BudgetController {
   private getUserId(req: any): string {
     const userId = req.user?.id ?? req.user?.sub;
     if (userId) return userId;
-
-    const devUserId = req.headers?.['x-user-id'];
-    if (process.env.NODE_ENV !== 'production' && devUserId) {
-      return Array.isArray(devUserId) ? devUserId[0] : devUserId;
-    }
 
     throw new UnauthorizedException('Authenticated user is required');
   }

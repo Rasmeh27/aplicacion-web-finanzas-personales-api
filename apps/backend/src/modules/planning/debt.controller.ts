@@ -6,6 +6,7 @@ import {
   Post,
   Query,
   Request,
+  UseGuards,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -13,9 +14,11 @@ import { CreateDebtPaymentDto } from './dto/create-debt-payment.dto';
 import { CreateDebtDto } from './dto/create-debt.dto';
 import { DebtIncomeRatioQueryDto } from './dto/debt-income-ratio-query.dto';
 import { DebtService } from './debt.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('debts')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('planning/debts')
 export class DebtController {
   constructor(private readonly service: DebtService) {}
@@ -73,11 +76,6 @@ export class DebtController {
   private getUserId(req: any): string {
     const userId = req.user?.id ?? req.user?.sub;
     if (userId) return userId;
-
-    const devUserId = req.headers?.['x-user-id'];
-    if (process.env.NODE_ENV !== 'production' && devUserId) {
-      return Array.isArray(devUserId) ? devUserId[0] : devUserId;
-    }
 
     throw new UnauthorizedException('Authenticated user is required');
   }

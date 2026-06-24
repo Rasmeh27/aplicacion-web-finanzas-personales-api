@@ -1,4 +1,4 @@
-import {
+﻿import {
   Body,
   Controller,
   Delete,
@@ -10,8 +10,8 @@ import {
   Patch,
   Post,
   Request,
-  UnauthorizedException,
   UseGuards,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -51,7 +51,7 @@ export class FinancialGoalController {
   @ApiOperation({
     summary: 'Configurar/crear el Fondo de emergencia',
     description:
-      'Crea el fondo de emergencia (predeterminado). Si no se envía targetAmount sugiere 3 meses de gastos del onboarding.',
+      'Crea el fondo de emergencia (predeterminado). Si no se envÃ­a targetAmount sugiere 3 meses de gastos del onboarding.',
   })
   configureEmergencyFund(@Request() req: any, @Body() dto: ConfigureEmergencyFundDto) {
     return this.service.configureEmergencyFund(this.getUserId(req), dto);
@@ -64,7 +64,7 @@ export class FinancialGoalController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Actualizar una meta (incluye pausar/completar/cancelar vía status)' })
+  @ApiOperation({ summary: 'Actualizar una meta (incluye pausar/completar/cancelar vÃ­a status)' })
   update(
     @Request() req: any,
     @Param('id', ParseUUIDPipe) id: string,
@@ -101,11 +101,7 @@ export class FinancialGoalController {
     const userId = req.user?.id ?? req.user?.sub;
     if (userId) return userId;
 
-    const devUserId = req.headers?.['x-user-id'];
-    if (process.env.NODE_ENV !== 'production' && devUserId) {
-      return Array.isArray(devUserId) ? devUserId[0] : devUserId;
-    }
-
     throw new UnauthorizedException('Authenticated user is required');
   }
 }
+
