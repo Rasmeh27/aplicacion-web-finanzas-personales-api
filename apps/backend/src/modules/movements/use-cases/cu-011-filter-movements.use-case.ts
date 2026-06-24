@@ -4,6 +4,7 @@ import {
   Between,
   FindOperator,
   FindOptionsWhere,
+  ILike,
   LessThanOrEqual,
   MoreThanOrEqual,
   Repository,
@@ -26,12 +27,21 @@ export class FilterTransactionsUseCase {
       where.type = filters.type;
     }
 
+    if (filters.classification) {
+      where.classification = filters.classification;
+    }
+
     if (filters.categoryId) {
       where.categoryId = filters.categoryId;
     }
 
     if (filters.startDate || filters.endDate) {
       where.date = this.buildDateFilter(filters);
+    }
+
+    const search = filters.search?.trim();
+    if (search) {
+      where.description = ILike(`%${search}%`);
     }
 
     const limit = filters.limit ?? 20;

@@ -1,40 +1,74 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
+  IsDateString,
   IsEnum,
   IsNumber,
-  IsString,
-  IsDateString,
   IsOptional,
+  IsString,
   IsUUID,
+  Length,
+  Matches,
+  MaxLength,
   Min,
+  Validate,
 } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
-import { TransactionType } from '../entities/transaction.entity';
+import {
+  TransactionClassification,
+  TransactionType,
+} from '../entities/transaction.entity';
+import { IsTypeCoherentWithClassificationConstraint } from '../validators/classification-type.validator';
 
 export class CreateTransactionDto {
-  @ApiProperty({ enum: TransactionType })
-  @IsEnum(TransactionType)
-  type: TransactionType;
+  @ApiProperty({
+    enum: TransactionClassification,
+    description:
+      'Clasificación de finanzas personales. Determina el tipo (income/expense).',
+  })
+  @IsEnum(TransactionClassification)
+  classification: TransactionClassification;
 
-  @ApiProperty({ example: 1500 })
-  @IsNumber()
+  @ApiPropertyOptional({
+    enum: TransactionType,
+    description:
+      'Opcional. Si se envía debe ser coherente con la clasificación; si se omite se deriva automáticamente.',
+  })
+  @IsOptional()
+  @IsEnum(TransactionType)
+  @Validate(IsTypeCoherentWithClassificationConstraint)
+  type?: TransactionType;
+
+  @ApiProperty({ example: 1500.0 })
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0.01)
   amount: number;
 
-  @ApiProperty({ example: 'DOP', required: false })
+  @ApiPropertyOptional({ example: 'DOP' })
   @IsOptional()
   @IsString()
+  @Length(3, 3)
+  @Matches(/^[A-Z]{3}$/)
   currency?: string;
 
   @ApiProperty({ example: 'Salario mensual' })
+  @IsString()
+  @Length(1, 240)
+  @Matches(/\S/, { message: 'description must contain text' })
+  description: string;
+
+  @ApiPropertyOptional({ example: 'Pago vía transferencia' })
   @IsOptional()
   @IsString()
-  description?: string;
+  @MaxLength(500)
+  notes?: string;
 
-  @ApiProperty({ example: '2026-05-01' })
+  @ApiPropertyOptional({ example: '2026-05-01' })
+  @IsOptional()
   @IsDateString()
-  date: string;
+  date?: string;
 
-  @ApiProperty({ required: false })
+  @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
   @IsUUID()
   categoryId?: string;

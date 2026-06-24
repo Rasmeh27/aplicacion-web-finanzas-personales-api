@@ -11,6 +11,7 @@ out/
 *.tsbuildinfo
 
 # Environment files
+.env
 .env.local
 .env.*.local
 
@@ -33,3 +34,6 @@ coverage/
 
 # Turbo
 .turbo
+
+# Local scratch files
+tmp/

@@ -72,7 +72,6 @@ export function GoalFormModal({
   });
 
   useEffect(() => {
-    if (!open) return;
     reset({
       name: initialValues?.name ?? '',
       targetAmount: (initialValues?.targetAmount ?? undefined) as GoalFormValues['targetAmount'],

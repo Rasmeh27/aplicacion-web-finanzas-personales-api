@@ -3,14 +3,17 @@ import {
   Get,
   Query,
   Request,
+  UseGuards,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { DashboardReportsService } from './dashboard-reports.service';
 import { MonthlyReportQueryDto } from './dto/monthly-report-query.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('dashboard-reports')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('dashboard-reports')
 export class DashboardReportsController {
   constructor(private readonly service: DashboardReportsService) {}
@@ -149,11 +152,6 @@ export class DashboardReportsController {
   private getUserId(req: any): string {
     const userId = req.user?.id ?? req.user?.sub;
     if (userId) return userId;
-
-    const devUserId = req.headers?.['x-user-id'];
-    if (process.env.NODE_ENV !== 'production' && devUserId) {
-      return Array.isArray(devUserId) ? devUserId[0] : devUserId;
-    }
 
     throw new UnauthorizedException('Authenticated user is required');
   }

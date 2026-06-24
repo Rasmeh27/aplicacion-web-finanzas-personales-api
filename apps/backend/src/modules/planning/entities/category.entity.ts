@@ -4,7 +4,9 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
+import { TransactionClassification } from '../../movements/entities/transaction.enums';
 
 export enum CategoryType {
   INCOME = 'income',
@@ -12,6 +14,7 @@ export enum CategoryType {
 }
 
 @Entity('categories')
+@Index(['userId', 'type'])
 export class Category {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -29,6 +32,18 @@ export class Category {
     default: CategoryType.EXPENSE,
   })
   type: CategoryType;
+
+  /**
+   * Clasificación de finanzas personales (opcional). Agrupa categorías como
+   * regular_income / extra_income / fixed_expense / variable_expense.
+   */
+  @Column({
+    type: 'enum',
+    enum: TransactionClassification,
+    enumName: 'transaction_classification',
+    nullable: true,
+  })
+  classification: TransactionClassification | null;
 
   @Column({ type: 'text', nullable: true })
   icon: string;

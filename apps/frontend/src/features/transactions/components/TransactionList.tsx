@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeftRight, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeftRight, Eye, Pencil, Trash2 } from 'lucide-react';
 import { cn } from '@/shared/utils/cn';
 import { formatCurrency } from '@/shared/utils/format-currency';
 import { CLASSIFICATION_META, type Transaction } from '../types';
@@ -9,6 +9,7 @@ type Props = {
   transactions: Transaction[];
   loading: boolean;
   onEdit: (transaction: Transaction) => void;
+  onView: (transaction: Transaction) => void;
   onDelete: (transaction: Transaction) => void;
 };
 
@@ -34,7 +35,12 @@ function SignedAmount({ transaction }: { transaction: Transaction }) {
   const formatted = formatCurrency(amount, transaction.currency);
 
   return (
-    <span className={cn('font-bold tabular-nums', isIncome ? 'text-emerald-600' : 'text-rose-600')}>
+    <span
+      className={cn(
+        'whitespace-nowrap font-bold tabular-nums',
+        isIncome ? 'text-emerald-600' : 'text-rose-600',
+      )}
+    >
       {isIncome ? '+' : '-'}
       {formatted}
     </span>
@@ -44,14 +50,24 @@ function SignedAmount({ transaction }: { transaction: Transaction }) {
 function ActionButtons({
   transaction,
   onEdit,
+  onView,
   onDelete,
 }: {
   transaction: Transaction;
   onEdit: Props['onEdit'];
+  onView: Props['onView'];
   onDelete: Props['onDelete'];
 }) {
   return (
     <div className="flex items-center gap-1.5">
+      <button
+        type="button"
+        onClick={() => onView(transaction)}
+        aria-label="Ver detalle"
+        className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-indigo-200 hover:text-indigo-600"
+      >
+        <Eye className="h-4 w-4" />
+      </button>
       <button
         type="button"
         onClick={() => onEdit(transaction)}
@@ -102,7 +118,7 @@ function SkeletonRows() {
   );
 }
 
-export function TransactionList({ transactions, loading, onEdit, onDelete }: Props) {
+export function TransactionList({ transactions, loading, onEdit, onView, onDelete }: Props) {
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       {loading && transactions.length === 0 ? (
@@ -146,7 +162,12 @@ export function TransactionList({ transactions, loading, onEdit, onDelete }: Pro
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex justify-end">
-                      <ActionButtons transaction={transaction} onEdit={onEdit} onDelete={onDelete} />
+                      <ActionButtons
+                        transaction={transaction}
+                        onEdit={onEdit}
+                        onView={onView}
+                        onDelete={onDelete}
+                      />
                     </div>
                   </td>
                 </tr>
@@ -177,7 +198,12 @@ export function TransactionList({ transactions, loading, onEdit, onDelete }: Pro
                 </div>
                 <div className="flex flex-col items-end gap-2">
                   <SignedAmount transaction={transaction} />
-                  <ActionButtons transaction={transaction} onEdit={onEdit} onDelete={onDelete} />
+                  <ActionButtons
+                    transaction={transaction}
+                    onEdit={onEdit}
+                    onView={onView}
+                    onDelete={onDelete}
+                  />
                 </div>
               </div>
             ))}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
@@ -65,9 +65,21 @@ export function BudgetFormModal({
     } as unknown as BudgetFormValues,
   });
 
+  const getCreateValues = useCallback(
+    (): BudgetFormValues =>
+      ({
+        categoryId: '',
+        month: defaultMonth,
+        year: defaultYear,
+        amountLimit: undefined,
+        currency: normalizeCurrency(defaultCurrency),
+        alertThresholdPct: 80,
+      }) as unknown as BudgetFormValues,
+    [defaultCurrency, defaultMonth, defaultYear],
+  );
+
   useEffect(() => {
-    if (!open) return;
-    if (isEdit && budget) {
+    if (open && isEdit && budget) {
       reset({
         categoryId: budget.categoryId ?? '',
         month: budget.month,
@@ -77,19 +89,16 @@ export function BudgetFormModal({
         alertThresholdPct: budget.alertThresholdPct as unknown as BudgetFormValues['alertThresholdPct'],
       } as unknown as BudgetFormValues);
     } else {
-      reset({
-        categoryId: '',
-        month: defaultMonth,
-        year: defaultYear,
-        amountLimit: undefined,
-        currency: normalizeCurrency(defaultCurrency),
-        alertThresholdPct: 80,
-      } as unknown as BudgetFormValues);
+      reset(getCreateValues());
     }
-  }, [open, isEdit, budget, defaultCurrency, defaultMonth, defaultYear, reset]);
+  }, [open, isEdit, budget, getCreateValues, reset]);
 
   const submit = handleSubmit(async (values) => {
     await onSubmit(values);
+
+    if (!isEdit) {
+      reset(getCreateValues());
+    }
   });
 
   return (

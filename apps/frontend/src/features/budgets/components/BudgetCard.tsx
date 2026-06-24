@@ -1,6 +1,6 @@
 'use client';
 
-import { Pencil, Power, RotateCcw, Tag } from 'lucide-react';
+import { Banknote, Pencil, Power, RotateCcw, Tag } from 'lucide-react';
 import { cn } from '@/shared/utils/cn';
 import { formatCurrency } from '@/shared/utils/format-currency';
 import { BUDGET_STATUS_META, MONTH_LABELS, type Budget } from '../types';
@@ -9,14 +9,17 @@ import { BudgetProgressBar } from './BudgetProgressBar';
 type Props = {
   budget: Budget;
   onEdit: (budget: Budget) => void;
+  onRegisterExpense: (budget: Budget) => void;
   onDeactivate: (budget: Budget) => void;
   onReactivate: (budget: Budget) => void;
 };
 
-export function BudgetCard({ budget, onEdit, onDeactivate, onReactivate }: Props) {
+export function BudgetCard({ budget, onEdit, onRegisterExpense, onDeactivate, onReactivate }: Props) {
   const statusMeta = BUDGET_STATUS_META[budget.status];
   const monthLabel = MONTH_LABELS[budget.month - 1] ?? `Mes ${budget.month}`;
   const isExceeded = budget.remainingAmount < 0;
+  const spent = formatCurrency(budget.spentAmount, budget.currency);
+  const limit = formatCurrency(budget.amountLimit, budget.currency);
 
   return (
     <div
@@ -48,12 +51,12 @@ export function BudgetCard({ budget, onEdit, onDeactivate, onReactivate }: Props
         <div className="flex items-end justify-between">
           <div>
             <p className="text-xs font-medium text-slate-400">Gastado</p>
-            <p className="text-2xl font-black tracking-tight text-slate-950">
-              {formatCurrency(budget.spentAmount, budget.currency)}
+            <p className="break-words text-xl font-black leading-tight tracking-tight text-slate-950 sm:text-2xl">
+              {spent}
             </p>
           </div>
-          <p className="text-sm font-semibold text-slate-400">
-            / {formatCurrency(budget.amountLimit, budget.currency)}
+          <p className="max-w-[45%] break-words text-right text-sm font-semibold leading-tight text-slate-400">
+            / {limit}
           </p>
         </div>
 
@@ -85,6 +88,18 @@ export function BudgetCard({ budget, onEdit, onDeactivate, onReactivate }: Props
           <Pencil className="h-4 w-4" />
           Editar
         </button>
+        <button
+          type="button"
+          onClick={() => onRegisterExpense(budget)}
+          disabled={!budget.isActive}
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Banknote className="h-4 w-4" />
+          Registrar gasto
+        </button>
+      </div>
+
+      <div className="mt-2 flex items-center gap-2">
         {budget.isActive ? (
           <button
             type="button"

@@ -1,7 +1,5 @@
-﻿export default function Page() {
-  return (
-    <main className="min-h-screen flex items-center justify-center">
-      <h1 className="text-2xl font-semibold">MONI</h1>
-    </main>
-  );
+import { redirect } from 'next/navigation';
+
+export default function Page() {
+  redirect('/auth/login');
 }

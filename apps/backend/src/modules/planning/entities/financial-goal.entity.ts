@@ -52,6 +52,13 @@ export class FinancialGoal {
   })
   status: FinancialGoalStatus;
 
+  /**
+   * Marca la meta predeterminada del usuario (Fondo de emergencia). Solo una
+   * meta debería tener este flag por usuario.
+   */
+  @Column({ name: 'is_default', default: false })
+  isDefault: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

@@ -36,7 +36,7 @@ type NotificationSettings = {
 
 const CURRENCY_LABELS: Record<CurrencyCode, string> = {
   DOP: 'RD$ - Peso dominicano',
-  USD: 'US$ - D?lar estadounidense',
+  USD: 'US$ - Dólar estadounidense',
   EUR: 'EUR - Euro',
 };
 
@@ -277,7 +277,7 @@ export function ProfileView() {
         }
       })
       .catch(() => {
-        setMessage('No se pudo sincronizar el perfil. Se muestran los datos guardados en la sesi?n.');
+        setMessage('No se pudo sincronizar el perfil. Se muestran los datos guardados en la sesión.');
       })
       .finally(() => setLoadingProfile(false));
   }, [accessToken, refreshToken, setAuth, syncedUserIdRef, user]);
@@ -297,7 +297,7 @@ export function ProfileView() {
       setEditOpen(false);
       setMessage('Preferencias actualizadas correctamente.');
     } catch {
-      setMessage('No se pudieron guardar las preferencias. Int?ntalo nuevamente.');
+      setMessage('No se pudieron guardar las preferencias. Inténtalo nuevamente.');
     } finally {
       setSaving(false);
     }
@@ -325,7 +325,7 @@ export function ProfileView() {
           </div>
           <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Perfil</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Administra tu informaci?n personal y las preferencias de tu cuenta.
+            Administra tu información personal y las preferencias de tu cuenta.
           </p>
         </header>
 
@@ -367,7 +367,7 @@ export function ProfileView() {
 
         <SectionCard
           icon={User}
-          title="Informaci?n personal"
+          title="Información personal"
           action={
             <button
               type="button"
@@ -386,10 +386,10 @@ export function ProfileView() {
           ) : null}
           <dl>
             <InfoRow label="Nombre completo" value={displayName} />
-            <InfoRow label="Correo electr?nico" value={displayEmail} />
-            <InfoRow label="Tel?fono" value="No configurado" muted />
+            <InfoRow label="Correo electrónico" value={displayEmail} />
+            <InfoRow label="Teléfono" value="No configurado" muted />
             <InfoRow label="Moneda" value={CURRENCY_LABELS[selectedCurrency]} />
-            <InfoRow label="Pa?s" value="Rep?blica Dominicana" />
+            <InfoRow label="País" value="República Dominicana" />
             <InfoRow label="Zona horaria" value="UTC-4 (AST)" />
           </dl>
         </SectionCard>
@@ -415,7 +415,7 @@ export function ProfileView() {
             icon={AlertTriangle}
             iconClassName="bg-amber-50 text-amber-500"
             title="Alertas de presupuesto"
-            description="Aviso al llegar al 80% del l?mite"
+            description="Aviso al llegar al 80% del límite"
             checked={settings.budgetAlerts}
             onToggle={() => updateSetting('budgetAlerts')}
           />
@@ -425,17 +425,17 @@ export function ProfileView() {
           <ActionRow
             icon={Lock}
             iconClassName="bg-blue-50 text-blue-600"
-            title="Contrase?a"
-            description="?ltima actualizaci?n no disponible"
+            title="Contraseña"
+            description="Última actualización no disponible"
             actionLabel="Cambiar"
             actionClassName="text-indigo-600"
-            onClick={() => setSoonMessage('El cambio de contrase?a estar? disponible cuando se conecte el flujo de recuperaci?n.')}
+            onClick={() => setSoonMessage('El cambio de contraseña estará disponible cuando se conecte el flujo de recuperación.')}
           />
           <PreferenceRow
             icon={Shield}
             iconClassName="bg-emerald-50 text-emerald-600"
-            title="Autenticaci?n en dos pasos"
-            description="A?ade una capa extra de seguridad"
+            title="Autenticación en dos pasos"
+            description="Añade una capa extra de seguridad"
             checked={settings.twoFactor}
             onToggle={() => updateSetting('twoFactor')}
           />
@@ -445,7 +445,7 @@ export function ProfileView() {
           <ActionRow
             icon={LogOut}
             iconClassName="bg-orange-50 text-orange-500"
-            title="Cerrar sesi?n"
+            title="Cerrar sesión"
             description="Salir de tu cuenta en este dispositivo"
             actionLabel="Salir"
             actionClassName="text-orange-500"
@@ -455,7 +455,7 @@ export function ProfileView() {
             icon={Trash2}
             iconClassName="bg-rose-50 text-rose-600"
             title="Eliminar cuenta"
-            description="Esta acci?n es permanente e irreversible"
+            description="Esta acción es permanente e irreversible"
             actionLabel="Eliminar"
             actionClassName="text-rose-600"
             onClick={() => setDeleteOpen(true)}
@@ -507,14 +507,14 @@ export function ProfileView() {
         </select>
       </Modal>
 
-      <Modal open={Boolean(soonMessage)} title="Funci?n pendiente" onClose={() => setSoonMessage(null)}>
+      <Modal open={Boolean(soonMessage)} title="Función pendiente" onClose={() => setSoonMessage(null)}>
         <p className="text-sm leading-6 text-slate-600">{soonMessage}</p>
       </Modal>
 
       <ConfirmDialog
         open={logoutOpen}
-        title="Cerrar sesi?n"
-        message="Â¿Seguro que deseas salir de tu cuenta en este dispositivo?"
+        title="Cerrar sesión"
+        message="¿Seguro que deseas salir de tu cuenta en este dispositivo?"
         confirmLabel="Salir"
         cancelLabel="Cancelar"
         loading={loggingOut}
@@ -525,7 +525,7 @@ export function ProfileView() {
       <ConfirmDialog
         open={deleteOpen}
         title="Eliminar cuenta"
-        message="El backend todav?a no expone un endpoint para eliminar la cuenta. No se realizar? ning?n cambio permanente."
+        message="El backend todavía no expone un endpoint para eliminar la cuenta. No se realizará ningún cambio permanente."
         confirmLabel="Entendido"
         cancelLabel="Cancelar"
         onConfirm={() => setDeleteOpen(false)}

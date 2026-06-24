@@ -19,6 +19,7 @@ import { TransactionSummaryCards } from './TransactionSummaryCards';
 import { TransactionFilters as FiltersBar } from './TransactionFilters';
 import { TransactionList } from './TransactionList';
 import { TransactionFormModal } from './TransactionFormModal';
+import { TransactionDetailModal } from './TransactionDetailModal';
 
 const PAGE_SIZE = 20;
 
@@ -54,6 +55,7 @@ export function TransactionsView() {
   const [formError, setFormError] = useState<string | null>(null);
 
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
+  const [viewing, setViewing] = useState<Transaction | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const refreshSummary = useCallback(async () => {
@@ -125,6 +127,11 @@ export function TransactionsView() {
 
   const handleFilterChange = (next: Partial<TransactionFilters>) => {
     setFilters((prev) => ({ ...prev, ...next }));
+  };
+
+  const resetFilters = () => {
+    setSearchValue('');
+    setFilters({ limit: PAGE_SIZE, offset: 0 });
   };
 
   const openCreate = () => {
@@ -204,6 +211,7 @@ export function TransactionsView() {
           searchValue={searchValue}
           onSearchChange={setSearchValue}
           onChange={handleFilterChange}
+          onReset={resetFilters}
         />
       </div>
 
@@ -235,6 +243,7 @@ export function TransactionsView() {
           transactions={items}
           loading={listLoading}
           onEdit={openEdit}
+          onView={setViewing}
           onDelete={(transaction) => setDeleteTarget(transaction)}
         />
       </div>
@@ -273,6 +282,8 @@ export function TransactionsView() {
         onConfirm={confirmDelete}
         onClose={() => setDeleteTarget(null)}
       />
+
+      <TransactionDetailModal transaction={viewing} onClose={() => setViewing(null)} />
     </>
   );
 }

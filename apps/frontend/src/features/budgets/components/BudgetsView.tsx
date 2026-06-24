@@ -8,6 +8,10 @@ import {
   categoryService,
   type Category,
 } from '@/features/categories/services/category.service';
+import { TransactionFormModal } from '@/features/transactions/components/TransactionFormModal';
+import { transactionService } from '@/features/transactions/services/transaction.service';
+import type { CreateTransactionPayload } from '@/features/transactions/types';
+import type { TransactionFormValues } from '@/features/transactions/schemas/transaction.schema';
 import { budgetService } from '../services/budget.service';
 import type { Budget, BudgetSummary } from '../types';
 import type { BudgetFormValues } from '../schemas/budget.schema';
@@ -33,8 +37,8 @@ export function BudgetsView() {
     return [current - 2, current - 1, current, current + 1];
   }, [now]);
 
-  const [month, setMonth] = useState(now.getMonth() + 1);
-  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState<number | undefined>(now.getMonth() + 1);
+  const [year, setYear] = useState<number | undefined>(now.getFullYear());
   const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
   const [statusFilter, setStatusFilter] = useState<BudgetStatusFilter>('all');
   const [includeInactive, setIncludeInactive] = useState(false);
@@ -53,9 +57,12 @@ export function BudgetsView() {
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [editing, setEditing] = useState<Budget | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [budgetFormRevision, setBudgetFormRevision] = useState(0);
 
   const [deactivateTarget, setDeactivateTarget] = useState<Budget | null>(null);
   const [deactivating, setDeactivating] = useState(false);
+  const [expenseBudget, setExpenseBudget] = useState<Budget | null>(null);
+  const [expenseError, setExpenseError] = useState<string | null>(null);
 
   const refreshSummary = useCallback(async () => {
     setSummaryLoading(true);
@@ -111,6 +118,7 @@ export function BudgetsView() {
     setModalMode('create');
     setEditing(null);
     setFormError(null);
+    setBudgetFormRevision((value) => value + 1);
     setModalOpen(true);
   };
 
@@ -118,7 +126,14 @@ export function BudgetsView() {
     setModalMode('edit');
     setEditing(budget);
     setFormError(null);
+    setBudgetFormRevision((value) => value + 1);
     setModalOpen(true);
+  };
+
+  const closeBudgetModal = () => {
+    setModalOpen(false);
+    setEditing(null);
+    setFormError(null);
   };
 
   const handleSubmit = async (values: BudgetFormValues) => {
@@ -173,6 +188,53 @@ export function BudgetsView() {
     }
   };
 
+  const resetFilters = () => {
+    setMonth(now.getMonth() + 1);
+    setYear(now.getFullYear());
+    setCategoryId(undefined);
+    setStatusFilter('all');
+    setIncludeInactive(false);
+  };
+
+  const showAllBudgets = () => {
+    setMonth(undefined);
+    setYear(undefined);
+    setCategoryId(undefined);
+    setStatusFilter('all');
+    setIncludeInactive(true);
+  };
+
+  const openRegisterExpense = (budget: Budget) => {
+    setExpenseBudget(budget);
+    setExpenseError(null);
+  };
+
+  const expenseTransactionInitialValues = useMemo<Partial<TransactionFormValues> | undefined>(() => {
+    if (!expenseBudget) return undefined;
+
+    return {
+      classification:
+        expenseBudget.category?.classification === 'fixed_expense'
+          ? 'fixed_expense'
+          : 'variable_expense',
+      categoryId: expenseBudget.categoryId ?? undefined,
+      description: expenseBudget.category?.name
+        ? `Gasto en ${expenseBudget.category.name}`
+        : 'Gasto de presupuesto',
+    };
+  }, [expenseBudget]);
+
+  const handleExpenseSubmit = async (payload: CreateTransactionPayload) => {
+    setExpenseError(null);
+    try {
+      await transactionService.create(payload);
+      setExpenseBudget(null);
+      await refreshAll();
+    } catch (error) {
+      setExpenseError(getErrorMessage(error, 'No se pudo registrar el gasto del presupuesto.'));
+    }
+  };
+
   const noExpenseCategories = categoriesLoaded && categories.length === 0;
 
   return (
@@ -215,6 +277,8 @@ export function BudgetsView() {
           onCategoryChange={setCategoryId}
           onStatusChange={setStatusFilter}
           onIncludeInactiveChange={setIncludeInactive}
+          onReset={resetFilters}
+          onShowAll={showAllBudgets}
         />
       </div>
 
@@ -291,6 +355,7 @@ export function BudgetsView() {
               key={budget.id}
               budget={budget}
               onEdit={openEdit}
+              onRegisterExpense={openRegisterExpense}
               onDeactivate={(b) => setDeactivateTarget(b)}
               onReactivate={(b) => void handleReactivate(b)}
             />
@@ -299,16 +364,17 @@ export function BudgetsView() {
       )}
 
       <BudgetFormModal
+        key={`budget-form-${budgetFormRevision}-${modalMode}-${editing?.id ?? 'new'}`}
         open={modalOpen}
         mode={modalMode}
         budget={editing}
         categories={categories}
         defaultCurrency={currency}
-        defaultMonth={month}
-        defaultYear={year}
+        defaultMonth={month ?? now.getMonth() + 1}
+        defaultYear={year ?? now.getFullYear()}
         years={years}
         serverError={formError}
-        onClose={() => setModalOpen(false)}
+        onClose={closeBudgetModal}
         onSubmit={handleSubmit}
       />
 
@@ -322,6 +388,17 @@ export function BudgetsView() {
         loading={deactivating}
         onConfirm={confirmDeactivate}
         onClose={() => setDeactivateTarget(null)}
+      />
+
+      <TransactionFormModal
+        open={Boolean(expenseBudget)}
+        mode="create"
+        categories={categories}
+        defaultCurrency={currency}
+        initialValues={expenseTransactionInitialValues}
+        serverError={expenseError}
+        onClose={() => setExpenseBudget(null)}
+        onSubmit={handleExpenseSubmit}
       />
     </>
   );

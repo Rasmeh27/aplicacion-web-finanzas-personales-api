@@ -68,7 +68,7 @@ export type CreateTransactionPayload = {
   currency: string;
   date: string;
   categoryId?: string;
-  description?: string;
+  description: string;
   notes?: string;
 };
 
