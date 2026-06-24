@@ -30,10 +30,10 @@ export class TransactionController {
 
   @Post()
   @ApiOperation({
-    summary: 'Crear una nueva transacciÃ³n',
+    summary: 'Crear una nueva transacción',
     description: 'Crea un movimiento personal (ingreso o gasto) para el usuario autenticado',
   })
-  @ApiResponse({ status: 201, description: 'TransacciÃ³n creada exitosamente' })
+  @ApiResponse({ status: 201, description: 'Transacción creada exitosamente' })
   create(@Request() req: any, @Body() dto: CreateTransactionDto) {
     return this.service.create(this.getUserId(req), dto);
   }
@@ -42,7 +42,7 @@ export class TransactionController {
   @ApiOperation({
     summary: 'Listar transacciones del usuario',
     description:
-      'Lista paginada con filtros por tipo, clasificaciÃ³n, categorÃ­a, rango de fechas y bÃºsqueda',
+      'Lista paginada con filtros por tipo, clasificación, categoría, rango de fechas y búsqueda',
   })
   @ApiResponse({ status: 200, description: 'Lista de transacciones obtenida exitosamente' })
   findAll(@Request() req: any, @Query() filters: FilterTransactionDto) {
@@ -53,7 +53,7 @@ export class TransactionController {
   @ApiOperation({
     summary: 'Resumen mensual de transacciones',
     description:
-      'Totales por clasificaciÃ³n (ingresos, ingresos extra, gastos fijos y variables) y balance del mes',
+      'Totales por clasificación (ingresos, ingresos extra, gastos fijos y variables) y balance del mes',
   })
   summary(
     @Request() req: any,
@@ -68,13 +68,13 @@ export class TransactionController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Obtener una transacciÃ³n por ID' })
+  @ApiOperation({ summary: 'Obtener una transacción por ID' })
   findOne(@Request() req: any, @Param('id', ParseUUIDPipe) id: string) {
     return this.service.findOne(this.getUserId(req), id);
   }
 
   @Put(':id')
-  @ApiOperation({ summary: 'Actualizar una transacciÃ³n' })
+  @ApiOperation({ summary: 'Actualizar una transacción' })
   update(
     @Request() req: any,
     @Param('id', ParseUUIDPipe) id: string,
@@ -84,7 +84,7 @@ export class TransactionController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Eliminar una transacciÃ³n' })
+  @ApiOperation({ summary: 'Eliminar una transacción' })
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Request() req: any, @Param('id', ParseUUIDPipe) id: string) {
     return this.service.remove(this.getUserId(req), id);

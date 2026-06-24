@@ -1,6 +1,6 @@
 'use client';
 
-import { Search } from 'lucide-react';
+import { RotateCcw, Search } from 'lucide-react';
 import { cn } from '@/shared/utils/cn';
 import type { Category } from '@/features/categories/services/category.service';
 import type { TransactionClassification, TransactionFilters } from '../types';
@@ -11,6 +11,7 @@ type Props = {
   searchValue: string;
   onSearchChange: (value: string) => void;
   onChange: (next: Partial<TransactionFilters>) => void;
+  onReset: () => void;
 };
 
 const CLASSIFICATION_CHIPS: { label: string; value?: TransactionClassification }[] = [
@@ -27,6 +28,7 @@ export function TransactionFilters({
   searchValue,
   onSearchChange,
   onChange,
+  onReset,
 }: Props) {
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -51,15 +53,15 @@ export function TransactionFilters({
         })}
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="relative">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(260px,1.6fr)_minmax(170px,1fr)_minmax(150px,0.85fr)_minmax(150px,0.85fr)]">
+        <div className="relative min-w-0">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             value={searchValue}
             onChange={(event) => onSearchChange(event.target.value)}
             placeholder="Buscar descripción o comercio"
-            className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+            className="h-11 w-full min-w-0 truncate rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
           />
         </div>
 
@@ -101,6 +103,17 @@ export function TransactionFilters({
             className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-950 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
           />
         </div>
+      </div>
+
+      <div className="mt-3 flex justify-end">
+        <button
+          type="button"
+          onClick={onReset}
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
+        >
+          <RotateCcw className="h-4 w-4" />
+          Limpiar filtros
+        </button>
       </div>
     </div>
   );

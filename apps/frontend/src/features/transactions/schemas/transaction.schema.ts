@@ -40,7 +40,14 @@ export const transactionSchema = z.object({
     .string({ required_error: 'Selecciona una fecha.' })
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida (YYYY-MM-DD).'),
   categoryId: emptyToUndefined(z.string().uuid('Categoría inválida.').optional()),
-  description: emptyToUndefined(z.string().max(240, 'Máximo 240 caracteres.').optional()),
+  description: z
+    .string({
+      required_error: 'La descripción es obligatoria.',
+      invalid_type_error: 'La descripción es obligatoria.',
+    })
+    .trim()
+    .min(1, 'La descripción es obligatoria.')
+    .max(240, 'Máximo 240 caracteres.'),
   notes: emptyToUndefined(z.string().max(500, 'Máximo 500 caracteres.').optional()),
 });
 

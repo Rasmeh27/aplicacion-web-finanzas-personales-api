@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
@@ -16,12 +16,14 @@ import {
   CLASSIFICATION_TO_TYPE,
   type CreateTransactionPayload,
   type Transaction,
+  type TransactionClassification,
 } from '../types';
 
 type Props = {
   open: boolean;
   mode: 'create' | 'edit';
   transaction?: Transaction | null;
+  initialValues?: Partial<TransactionFormValues>;
   categories: Category[];
   defaultCurrency: string;
   serverError?: string | null;
@@ -43,10 +45,16 @@ const normalizeCurrency = (currency: string): (typeof CURRENCIES)[number] =>
     ? (currency as (typeof CURRENCIES)[number])
     : 'DOP';
 
+const PREFERRED_CATEGORY_NAMES: Partial<Record<TransactionClassification, string[]>> = {
+  regular_income: ['salario'],
+  extra_income: ['ingreso extra', 'otros ingresos', 'freelance', 'bono'],
+};
+
 export function TransactionFormModal({
   open,
   mode,
   transaction,
+  initialValues,
   categories,
   defaultCurrency,
   serverError,
@@ -73,10 +81,22 @@ export function TransactionFormModal({
     } as unknown as TransactionFormValues,
   });
 
-  useEffect(() => {
-    if (!open) return;
+  const getCreateValues = useCallback(
+    (): TransactionFormValues =>
+      ({
+        classification: initialValues?.classification ?? 'variable_expense',
+        amount: initialValues?.amount,
+        currency: normalizeCurrency(initialValues?.currency ?? defaultCurrency),
+        date: initialValues?.date ?? todayString(),
+        categoryId: initialValues?.categoryId,
+        description: initialValues?.description ?? '',
+        notes: initialValues?.notes ?? '',
+      }) as unknown as TransactionFormValues,
+    [defaultCurrency, initialValues],
+  );
 
-    if (mode === 'edit' && transaction) {
+  useEffect(() => {
+    if (open && mode === 'edit' && transaction) {
       reset({
         classification: transaction.classification,
         amount: Number(transaction.amount) as unknown as TransactionFormValues['amount'],
@@ -87,25 +107,36 @@ export function TransactionFormModal({
         notes: transaction.notes ?? '',
       } as unknown as TransactionFormValues);
     } else {
-      reset({
-        classification: 'variable_expense',
-        amount: undefined,
-        currency: normalizeCurrency(defaultCurrency),
-        date: todayString(),
-        categoryId: undefined,
-        description: '',
-        notes: '',
-      } as unknown as TransactionFormValues);
+      reset(getCreateValues());
     }
-  }, [open, mode, transaction, defaultCurrency, reset]);
+  }, [open, mode, transaction, getCreateValues, reset]);
 
   const classification = watch('classification');
   const selectedType = classification ? CLASSIFICATION_TO_TYPE[classification] : undefined;
 
   const visibleCategories = useMemo(
-    () => categories.filter((category) => !selectedType || category.type === selectedType),
-    [categories, selectedType],
+    () =>
+      categories.filter(
+        (category) =>
+          (!selectedType || category.type === selectedType) &&
+          (!classification || !category.classification || category.classification === classification),
+      ),
+    [categories, classification, selectedType],
   );
+
+  useEffect(() => {
+    if (mode === 'edit' || !classification || !['regular_income', 'extra_income'].includes(classification)) {
+      return;
+    }
+
+    const preferredNames = PREFERRED_CATEGORY_NAMES[classification] ?? [];
+    const preferred =
+      visibleCategories.find((category) =>
+        preferredNames.some((name) => category.name.toLowerCase().includes(name)),
+      ) ?? visibleCategories[0];
+
+    if (preferred) setValue('categoryId', preferred.id);
+  }, [classification, mode, setValue, visibleCategories]);
 
   // Si la categoría seleccionada ya no corresponde al tipo, se limpia.
   const currentCategoryId = watch('categoryId');
@@ -116,7 +147,7 @@ export function TransactionFormModal({
   }, [visibleCategories, currentCategoryId, setValue]);
 
   const submit = handleSubmit(async (values) => {
-    await onSubmit({
+    const payload: CreateTransactionPayload = {
       classification: values.classification,
       amount: Number(values.amount),
       currency: values.currency,
@@ -124,7 +155,13 @@ export function TransactionFormModal({
       categoryId: values.categoryId,
       description: values.description,
       notes: values.notes,
-    });
+    };
+
+    await onSubmit(payload);
+
+    if (mode === 'create') {
+      reset(getCreateValues());
+    }
   });
 
   return (
@@ -235,7 +272,7 @@ export function TransactionFormModal({
 
         <div>
           <label htmlFor="description" className="mb-1.5 block text-sm font-semibold text-slate-800">
-            Descripción
+            Descripción <span className="text-rose-500">*</span>
           </label>
           <input
             id="description"

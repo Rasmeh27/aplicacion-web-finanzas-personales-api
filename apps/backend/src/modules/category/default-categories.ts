@@ -16,6 +16,7 @@ export interface DefaultCategorySeed {
 export const DEFAULT_CATEGORIES: DefaultCategorySeed[] = [
   // Ingresos
   { name: 'Salario', type: CategoryType.INCOME, classification: TransactionClassification.REGULAR_INCOME, icon: 'Wallet', color: '#059669' },
+  { name: 'Ingreso extra', type: CategoryType.INCOME, classification: TransactionClassification.EXTRA_INCOME, icon: 'PlusCircle', color: '#0d9488' },
   { name: 'Freelance', type: CategoryType.INCOME, classification: TransactionClassification.EXTRA_INCOME, icon: 'Laptop', color: '#0d9488' },
   { name: 'Bono', type: CategoryType.INCOME, classification: TransactionClassification.EXTRA_INCOME, icon: 'Gift', color: '#10b981' },
   { name: 'Reembolso', type: CategoryType.INCOME, classification: TransactionClassification.EXTRA_INCOME, icon: 'Undo2', color: '#14b8a6' },

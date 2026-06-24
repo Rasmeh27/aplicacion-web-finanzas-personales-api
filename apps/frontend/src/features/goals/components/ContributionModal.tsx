@@ -40,7 +40,6 @@ export function ContributionModal({ open, goal, serverError, onClose, onSubmit }
   });
 
   useEffect(() => {
-    if (!open) return;
     reset({
       amount: undefined,
       contributionDate: todayString(),

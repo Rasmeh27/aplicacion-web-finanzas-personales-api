@@ -1,23 +1,26 @@
 'use client';
 
+import { RotateCcw } from 'lucide-react';
 import type { Category } from '@/features/categories/services/category.service';
 import { MONTH_LABELS } from '../types';
 
 export type BudgetStatusFilter = 'all' | 'safe' | 'warning' | 'exceeded';
 
 type Props = {
-  month: number;
-  year: number;
+  month?: number;
+  year?: number;
   categoryId?: string;
   statusFilter: BudgetStatusFilter;
   includeInactive: boolean;
   categories: Category[];
   years: number[];
-  onMonthChange: (month: number) => void;
-  onYearChange: (year: number) => void;
+  onMonthChange: (month?: number) => void;
+  onYearChange: (year?: number) => void;
   onCategoryChange: (categoryId?: string) => void;
   onStatusChange: (status: BudgetStatusFilter) => void;
   onIncludeInactiveChange: (include: boolean) => void;
+  onReset: () => void;
+  onShowAll: () => void;
 };
 
 const STATUS_OPTIONS: { value: BudgetStatusFilter; label: string }[] = [
@@ -43,6 +46,8 @@ export function BudgetFilters({
   onCategoryChange,
   onStatusChange,
   onIncludeInactiveChange,
+  onReset,
+  onShowAll,
 }: Props) {
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -51,9 +56,12 @@ export function BudgetFilters({
           <label className="mb-1 block text-xs font-semibold text-slate-500">Mes</label>
           <select
             className={selectClass}
-            value={month}
-            onChange={(event) => onMonthChange(Number(event.target.value))}
+            value={month ?? ''}
+            onChange={(event) =>
+              onMonthChange(event.target.value ? Number(event.target.value) : undefined)
+            }
           >
+            <option value="">Todos los meses</option>
             {MONTH_LABELS.map((label, index) => (
               <option key={label} value={index + 1}>
                 {label}
@@ -66,9 +74,12 @@ export function BudgetFilters({
           <label className="mb-1 block text-xs font-semibold text-slate-500">Año</label>
           <select
             className={selectClass}
-            value={year}
-            onChange={(event) => onYearChange(Number(event.target.value))}
+            value={year ?? ''}
+            onChange={(event) =>
+              onYearChange(event.target.value ? Number(event.target.value) : undefined)
+            }
           >
+            <option value="">Todos los años</option>
             {years.map((value) => (
               <option key={value} value={value}>
                 {value}
@@ -109,15 +120,35 @@ export function BudgetFilters({
         </div>
       </div>
 
-      <label className="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-600">
-        <input
-          type="checkbox"
-          checked={includeInactive}
-          onChange={(event) => onIncludeInactiveChange(event.target.checked)}
-          className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-        />
-        Mostrar presupuestos inactivos
-      </label>
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-600">
+          <input
+            type="checkbox"
+            checked={includeInactive}
+            onChange={(event) => onIncludeInactiveChange(event.target.checked)}
+            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+          />
+          Mostrar presupuestos inactivos
+        </label>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={onShowAll}
+            className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-bold text-indigo-700 transition hover:bg-indigo-100"
+          >
+            Mostrar todos
+          </button>
+          <button
+            type="button"
+            onClick={onReset}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Limpiar filtros
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

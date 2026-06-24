@@ -51,11 +51,11 @@ export class CreateTransactionDto {
   @Matches(/^[A-Z]{3}$/)
   currency?: string;
 
-  @ApiPropertyOptional({ example: 'Salario mensual' })
-  @IsOptional()
+  @ApiProperty({ example: 'Salario mensual' })
   @IsString()
-  @MaxLength(240)
-  description?: string;
+  @Length(1, 240)
+  @Matches(/\S/, { message: 'description must contain text' })
+  description: string;
 
   @ApiPropertyOptional({ example: 'Pago vía transferencia' })
   @IsOptional()

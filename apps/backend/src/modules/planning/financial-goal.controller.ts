@@ -51,7 +51,7 @@ export class FinancialGoalController {
   @ApiOperation({
     summary: 'Configurar/crear el Fondo de emergencia',
     description:
-      'Crea el fondo de emergencia (predeterminado). Si no se envÃ­a targetAmount sugiere 3 meses de gastos del onboarding.',
+      'Crea el fondo de emergencia (predeterminado). Si no se envía targetAmount sugiere 3 meses de gastos del onboarding.',
   })
   configureEmergencyFund(@Request() req: any, @Body() dto: ConfigureEmergencyFundDto) {
     return this.service.configureEmergencyFund(this.getUserId(req), dto);
@@ -64,7 +64,7 @@ export class FinancialGoalController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Actualizar una meta (incluye pausar/completar/cancelar vÃ­a status)' })
+  @ApiOperation({ summary: 'Actualizar una meta (incluye pausar/completar/cancelar vía status)' })
   update(
     @Request() req: any,
     @Param('id', ParseUUIDPipe) id: string,
