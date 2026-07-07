@@ -112,14 +112,14 @@ export default function LoginPage() {
             Entra a tu panel para controlar tu dinero con más claridad:
             presupuestos, metas, gastos y movimientos en un solo lugar.
           </p>
-          <div className="mt-5 grid gap-3 text-sm font-bold text-slate-600 sm:grid-cols-3">
-            <span className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-blue-700">
+          <div className="mt-5 grid gap-3 text-center text-sm font-bold text-slate-600 sm:grid-cols-3">
+            <span className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-center text-blue-700">
               Panel financiero
             </span>
-            <span className="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-indigo-700">
+            <span className="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-center text-indigo-700">
               Metas y ahorro
             </span>
-            <span className="rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3 text-violet-700">
+            <span className="rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3 text-center text-violet-700">
               Gastos claros
             </span>
           </div>
