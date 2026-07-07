@@ -64,6 +64,7 @@ export type CreateBudgetPayload = {
   currency: string;
   alertThresholdPct: number;
   isActive?: boolean;
+  repeatMonths?: number;
 };
 
 export type UpdateBudgetPayload = {

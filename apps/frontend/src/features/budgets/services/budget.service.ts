@@ -40,8 +40,8 @@ export const budgetService = {
     return data;
   },
 
-  async createBudget(payload: CreateBudgetPayload): Promise<Budget> {
-    const { data } = await apiClient.post<Budget>('/budgets', payload);
+  async createBudget(payload: CreateBudgetPayload): Promise<Budget[]> {
+    const { data } = await apiClient.post<Budget[]>('/budgets', payload);
     return data;
   },
 

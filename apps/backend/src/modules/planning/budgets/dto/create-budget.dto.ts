@@ -62,4 +62,19 @@ export class CreateBudgetDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({
+    example: 6,
+    minimum: 1,
+    maximum: 36,
+    default: 1,
+    description:
+      'Cantidad de meses consecutivos a crear, comenzando por month/year. 1 crea solo el mes seleccionado.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(36)
+  repeatMonths?: number;
 }

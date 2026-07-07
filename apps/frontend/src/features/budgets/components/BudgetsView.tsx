@@ -153,6 +153,7 @@ export function BudgetsView() {
           amountLimit: Number(values.amountLimit),
           currency: values.currency,
           alertThresholdPct: Number(values.alertThresholdPct),
+          repeatMonths: Number(values.repeatMonths),
         });
       }
       setModalOpen(false);

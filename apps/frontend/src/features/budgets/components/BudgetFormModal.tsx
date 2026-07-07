@@ -62,6 +62,7 @@ export function BudgetFormModal({
       amountLimit: undefined,
       currency: normalizeCurrency(defaultCurrency),
       alertThresholdPct: 80,
+      repeatMonths: 1,
     } as unknown as BudgetFormValues,
   });
 
@@ -74,6 +75,7 @@ export function BudgetFormModal({
         amountLimit: undefined,
         currency: normalizeCurrency(defaultCurrency),
         alertThresholdPct: 80,
+        repeatMonths: 1,
       }) as unknown as BudgetFormValues,
     [defaultCurrency, defaultMonth, defaultYear],
   );
@@ -87,6 +89,7 @@ export function BudgetFormModal({
         amountLimit: budget.amountLimit as unknown as BudgetFormValues['amountLimit'],
         currency: normalizeCurrency(budget.currency),
         alertThresholdPct: budget.alertThresholdPct as unknown as BudgetFormValues['alertThresholdPct'],
+        repeatMonths: 1,
       } as unknown as BudgetFormValues);
     } else {
       reset(getCreateValues());
@@ -232,6 +235,29 @@ export function BudgetFormModal({
             </p>
           )}
         </div>
+
+        {!isEdit ? (
+          <div>
+            <label htmlFor="budget-repeat-months" className="mb-1.5 block text-sm font-semibold text-slate-800">
+              Repetir presupuesto
+            </label>
+            <select id="budget-repeat-months" className={inputClass} {...register('repeatMonths')}>
+              <option value={1}>Solo este mes</option>
+              <option value={3}>3 meses consecutivos</option>
+              <option value={6}>6 meses consecutivos</option>
+              <option value={12}>12 meses consecutivos</option>
+              <option value={24}>24 meses consecutivos</option>
+              <option value={36}>36 meses consecutivos</option>
+            </select>
+            {errors.repeatMonths ? (
+              <p className="mt-1 text-xs font-medium text-rose-600">{errors.repeatMonths.message}</p>
+            ) : (
+              <p className="mt-1 text-xs text-slate-400">
+                Se crearán copias mensuales desde el mes seleccionado sin duplicar periodos ya existentes.
+              </p>
+            )}
+          </div>
+        ) : null}
 
         {serverError ? (
           <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">

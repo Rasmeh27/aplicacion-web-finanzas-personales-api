@@ -46,6 +46,16 @@ export const budgetSchema = z.object({
       .min(1, 'El umbral debe estar entre 1 y 100.')
       .max(100, 'El umbral debe estar entre 1 y 100.'),
   ),
+  repeatMonths: numberFromInput(
+    z
+      .number({
+        required_error: 'Ingresa cuántos meses repetir.',
+        invalid_type_error: 'Ingresa una cantidad válida.',
+      })
+      .int('La cantidad debe ser un número entero.')
+      .min(1, 'Debe repetirse al menos 1 mes.')
+      .max(36, 'Puedes repetir hasta 36 meses.'),
+  ).default(1),
 });
 
 export type BudgetFormValues = z.infer<typeof budgetSchema>;

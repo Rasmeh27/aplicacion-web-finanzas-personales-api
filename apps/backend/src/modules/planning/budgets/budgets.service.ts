@@ -82,26 +82,35 @@ export class BudgetsService {
     private readonly transactionRepo: Repository<Transaction>,
   ) {}
 
-  async create(userId: string, dto: CreateBudgetDto): Promise<BudgetView> {
+  async create(userId: string, dto: CreateBudgetDto): Promise<BudgetView[]> {
     const category = await this.validateExpenseCategory(userId, dto.categoryId);
-    await this.ensureNoDuplicateBudget(userId, dto.categoryId, dto.month, dto.year);
+    const periods = this.buildRecurringPeriods(dto.month, dto.year, dto.repeatMonths ?? 1);
+    await this.ensureNoDuplicateBudgets(userId, dto.categoryId, periods);
 
-    const budget = this.budgetRepo.create({
+    const budgets = periods.map(({ month, year }) =>
+      this.budgetRepo.create({
       userId,
       categoryId: dto.categoryId,
-      name: this.buildName(category?.name, dto.year, dto.month),
-      periodMonth: this.buildPeriodMonth(dto.year, dto.month),
+        name: this.buildName(category?.name, year, month),
+        periodMonth: this.buildPeriodMonth(year, month),
       periodType: 'monthly',
-      month: dto.month,
-      year: dto.year,
+        month,
+        year,
       limitAmount: dto.amountLimit,
       currency: (dto.currency ?? 'DOP').toUpperCase(),
       alertThresholdPct: dto.alertThresholdPct ?? 80,
       isActive: dto.isActive ?? true,
-    });
+      }),
+    );
 
-    const saved = await this.budgetRepo.save(budget);
-    return this.toView(await this.reloadWithCategory(saved.id, userId));
+    const saved = await this.budgetRepo.save(budgets);
+    const savedIds = saved.map((budget) => budget.id);
+    const reloaded = await this.budgetRepo.find({
+      where: savedIds.map((id) => ({ id, userId })),
+      relations: ['category'],
+      order: { periodMonth: 'ASC' },
+    });
+    return reloaded.map((budget) => this.toView(budget));
   }
 
   async findAll(userId: string, filters: ListBudgetsQueryDto = {}): Promise<BudgetListResult> {
@@ -230,17 +239,39 @@ export class BudgetsService {
     month: number,
     year: number,
   ): Promise<void> {
-    const existing = await this.budgetRepo.findOne({
+    await this.ensureNoDuplicateBudgets(userId, categoryId, [{ month, year }]);
+  }
+
+  async ensureNoDuplicateBudgets(
+    userId: string,
+    categoryId: string,
+    periods: Array<{ month: number; year: number }>,
+  ): Promise<void> {
+    const existing = await this.budgetRepo.find({
       where: {
         userId,
         categoryId,
-        periodMonth: this.buildPeriodMonth(year, month),
+        periodMonth: Between(
+          this.buildPeriodMonth(periods[0].year, periods[0].month),
+          this.buildPeriodMonth(periods[periods.length - 1].year, periods[periods.length - 1].month),
+        ),
         isActive: true,
       },
     });
-    if (existing) {
+
+    const requestedPeriods = new Set(
+      periods.map(({ month, year }) => this.buildPeriodMonth(year, month)),
+    );
+    const duplicatePeriods = existing
+      .filter((budget) => requestedPeriods.has(budget.periodMonth))
+      .map((budget) => {
+        const { month, year } = this.effectivePeriod(budget);
+        return `${String(month).padStart(2, '0')}/${year}`;
+      });
+
+    if (duplicatePeriods.length > 0) {
       throw new BadRequestException(
-        'Ya existe un presupuesto activo para esa categoría en ese periodo',
+        `Ya existe un presupuesto activo para esa categoría en: ${duplicatePeriods.join(', ')}`,
       );
     }
   }
@@ -393,6 +424,25 @@ export class BudgetsService {
 
   private buildPeriodMonth(year: number, month: number): string {
     return `${year}-${String(month).padStart(2, '0')}-01`;
+  }
+
+  private buildRecurringPeriods(
+    startMonth: number,
+    startYear: number,
+    repeatMonths: number,
+  ): Array<{ month: number; year: number }> {
+    const periods = Array.from({ length: repeatMonths }, (_, index) => {
+      const zeroBasedMonth = startMonth - 1 + index;
+      const year = startYear + Math.floor(zeroBasedMonth / 12);
+      const month = (zeroBasedMonth % 12) + 1;
+      return { month, year };
+    });
+
+    if (periods.some(({ year }) => !this.isValidYear(year))) {
+      throw new BadRequestException('La recurrencia excede el rango de años permitido.');
+    }
+
+    return periods;
   }
 
   private monthRange(year: number, month: number): { startDate: string; endDate: string } {
