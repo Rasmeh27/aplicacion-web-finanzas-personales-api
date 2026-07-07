@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { CalendarDays, Plus, Tag, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Plus, Tag, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import { useAuthStore } from '@/store/slices/auth.store';
 import { formatCurrency } from '@/shared/utils/format-currency';
 import { useTranslation } from '@/shared/i18n/useTranslation';
@@ -74,6 +75,7 @@ const CATEGORY_LABEL: Record<ExpenseCategoryKey, TranslationKey> = {
 
 export function DashboardOverview() {
   const { t } = useTranslation();
+  const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const currency = user?.primaryCurrency ?? 'DOP';
   const [activePeriod, setActivePeriod] = useState<DashboardPeriod>('month');
@@ -108,20 +110,17 @@ export function DashboardOverview() {
   return (
     <>
       <header className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-950/5">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-indigo-600">
-              <CalendarDays className="h-3.5 w-3.5" />
-              {PERIOD_CAPTION[activePeriod]}
-            </div>
-            <h1 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">{t('dashboard.title')}</h1>
+            <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">{t('dashboard.title')}</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
               {t('dashboard.subtitle')} Cambia entre hoy, semana, mes y año para ver cómo se mueven tus números.
             </p>
           </div>
           <button
             type="button"
-            className="inline-flex min-h-[76px] w-full items-center justify-center gap-3 rounded-3xl bg-indigo-600 px-8 py-4 text-base font-black text-white shadow-xl shadow-indigo-600/25 transition hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow-2xl hover:shadow-indigo-600/25 sm:w-auto xl:min-w-[210px]"
+            onClick={() => router.push('/transactions?new=1')}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-indigo-600/25 transition hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-600/25 sm:w-auto sm:min-w-[190px]"
           >
             <Plus className="h-5 w-5" />
             {t('dashboard.addRecord')}

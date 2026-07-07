@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, Plus } from 'lucide-react';
 import { useAuthStore } from '@/store/slices/auth.store';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
@@ -31,6 +32,9 @@ const getErrorMessage = (error: unknown, fallback: string): string => {
 };
 
 export function TransactionsView() {
+  const router = useRouter();
+  const pathname = usePathname() ?? '/transactions';
+  const searchParams = useSearchParams();
   const user = useAuthStore((state) => state.user);
   const currency = user?.primaryCurrency ?? 'DOP';
 
@@ -134,12 +138,19 @@ export function TransactionsView() {
     setFilters({ limit: PAGE_SIZE, offset: 0 });
   };
 
-  const openCreate = () => {
+  const openCreate = useCallback(() => {
     setModalMode('create');
     setEditing(null);
     setFormError(null);
     setModalOpen(true);
-  };
+  }, []);
+
+  useEffect(() => {
+    if (searchParams.get('new') !== '1') return;
+
+    openCreate();
+    router.replace(pathname);
+  }, [openCreate, pathname, router, searchParams]);
 
   const openEdit = (transaction: Transaction) => {
     setModalMode('edit');
