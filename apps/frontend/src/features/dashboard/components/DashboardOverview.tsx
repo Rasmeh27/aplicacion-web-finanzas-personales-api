@@ -9,6 +9,7 @@ import type { TranslationKey } from '@/shared/i18n/translations';
 import {
   getDashboardSummary,
   getExpenseCategories,
+  getRecentDashboardTransactions,
   getSpendingBars,
   type DashboardPeriod,
   type ExpenseCategoryKey,
@@ -80,6 +81,10 @@ export function DashboardOverview() {
   const summary = useMemo(() => getDashboardSummary(user, activePeriod), [activePeriod, user]);
   const spendingBars = useMemo(() => getSpendingBars(user, activePeriod), [activePeriod, user]);
   const categories = useMemo(() => getExpenseCategories(user, activePeriod), [activePeriod, user]);
+  const recentTransactions = useMemo(
+    () => getRecentDashboardTransactions(user, activePeriod),
+    [activePeriod, user],
+  );
 
   const money = (value: number) => formatCurrency(value, currency);
 
@@ -92,6 +97,7 @@ export function DashboardOverview() {
   const categoryData = categories.map((category) => ({
     name: t(CATEGORY_LABEL[category.key]),
     pct: category.pct,
+    amount: category.amount,
   }));
 
   const topCategoryLabel =
@@ -113,25 +119,11 @@ export function DashboardOverview() {
               {t('dashboard.subtitle')} Cambia entre hoy, semana, mes y año para ver cómo se mueven tus números.
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[480px]">
-            <div className="rounded-2xl bg-indigo-50 px-4 py-3">
-              <p className="text-xs font-bold text-indigo-500">Balance</p>
-              <p className="mt-1 text-lg font-black text-indigo-950">{money(summary.balanceAvailable)}</p>
-            </div>
-            <div className="rounded-2xl bg-emerald-50 px-4 py-3">
-              <p className="text-xs font-bold text-emerald-500">Ingresos</p>
-              <p className="mt-1 text-lg font-black text-emerald-950">{money(summary.monthlyIncome)}</p>
-            </div>
-            <div className="rounded-2xl bg-rose-50 px-4 py-3">
-              <p className="text-xs font-bold text-rose-500">Gastos</p>
-              <p className="mt-1 text-lg font-black text-rose-950">{money(summary.monthlyExpenses)}</p>
-            </div>
-          </div>
           <button
             type="button"
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-sm shadow-indigo-600/25 transition hover:bg-indigo-700 xl:self-start"
+            className="inline-flex min-h-[76px] w-full items-center justify-center gap-3 rounded-3xl bg-indigo-600 px-8 py-4 text-base font-black text-white shadow-xl shadow-indigo-600/25 transition hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow-2xl hover:shadow-indigo-600/25 sm:w-auto xl:min-w-[210px]"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-5 w-5" />
             {t('dashboard.addRecord')}
           </button>
         </div>
@@ -192,17 +184,22 @@ export function DashboardOverview() {
             legend={t('chart.legend')}
           />
         </div>
-        <CategoryProgress categories={categoryData} title={t('category.title')} caption={PERIOD_CAPTION[activePeriod]} />
+        <CategoryProgress
+          categories={categoryData}
+          currency={currency}
+          title={t('category.title')}
+          caption={PERIOD_CAPTION[activePeriod]}
+        />
       </div>
 
       <div className="mt-6">
         <RecentTransactionsTable
-          transactions={[]}
+          transactions={recentTransactions}
           currency={currency}
-          title={t('recent.title')}
+          title={`${t('recent.title')} · ${PERIOD_CAPTION[activePeriod]}`}
           seeAllLabel={t('recent.seeAll')}
-          emptyTitle={t('recent.emptyTitle')}
-          emptySubtitle={t('recent.emptySubtitle')}
+          emptyTitle={`No hay movimientos para ${PERIOD_CAPTION[activePeriod].toLowerCase()}.`}
+          emptySubtitle="Cuando registres ingresos o gastos reales para este período aparecerán aquí."
         />
       </div>
     </>

@@ -95,12 +95,12 @@ function HealthScoreCard() {
           <p className="mt-0.5 text-xs font-bold text-slate-400">de 1000 puntos</p>
         </div>
         <div className="rounded-2xl border border-white bg-white px-3 py-2 text-center shadow-sm">
-          <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">Letra</p>
-          <p className="text-2xl font-black leading-none text-slate-950">{letter}</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Letra</p>
+          <p className="text-2xl font-semibold leading-none text-slate-800">{letter}</p>
         </div>
       </div>
-      <p className="mt-3 text-xs font-semibold text-slate-500">
-        Clasificación: <span className="font-black text-slate-700">{letter} · {label}</span>
+      <p className="mt-3 text-xs font-medium text-slate-500">
+        Clasificación: <span className="font-semibold text-slate-700">{letter} · {label}</span>
       </p>
       <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-200">
         <div className={cn('h-full rounded-full transition-all', HEALTH_BAR_STYLES[tone])} style={{ width: `${pct}%` }} />

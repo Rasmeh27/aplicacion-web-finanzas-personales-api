@@ -1,4 +1,5 @@
 import type { AuthUser } from '@/types/auth';
+import type { RecentTransaction } from '../data/dashboard.mock';
 
 export type FinancialOverview = {
   income: number;
@@ -29,7 +30,7 @@ export type SpendingBarKey = 'fixed' | 'variable' | 'savings' | 'balance';
 export type DerivedSpendingBar = { key: SpendingBarKey; amount: number; highlight?: boolean };
 
 export type ExpenseCategoryKey = 'fixedExpenses' | 'variableExpenses' | 'savingTarget' | 'freeBalance';
-export type DerivedCategory = { key: ExpenseCategoryKey; pct: number };
+export type DerivedCategory = { key: ExpenseCategoryKey; pct: number; amount: number };
 
 export type TopCategoryKey = 'fixed' | 'variable' | 'none';
 export type DerivedSummary = {
@@ -49,6 +50,13 @@ const PERIOD_MULTIPLIER: Record<DashboardPeriod, number> = {
   week: 7 / 30,
   month: 1,
   year: 12,
+};
+
+const PERIOD_TRANSACTION_DATE: Record<DashboardPeriod, string> = {
+  today: 'Hoy',
+  week: 'Esta semana',
+  month: 'Este mes',
+  year: 'Este año',
 };
 
 const scaleOverview = (overview: FinancialOverview, period: DashboardPeriod): FinancialOverview => {
@@ -158,10 +166,10 @@ export function getExpenseCategories(user: AuthUser | null, period: DashboardPer
   const toPct = (value: number) => (reference > 0 ? Math.round((value / reference) * 100) : 0);
 
   return [
-    { key: 'fixedExpenses', pct: toPct(overview.fixedExpenses) },
-    { key: 'variableExpenses', pct: toPct(overview.variableExpenses) },
-    { key: 'savingTarget', pct: toPct(overview.savingTarget) },
-    { key: 'freeBalance', pct: toPct(Math.max(overview.balance, 0)) },
+    { key: 'fixedExpenses', pct: toPct(overview.fixedExpenses), amount: overview.fixedExpenses },
+    { key: 'variableExpenses', pct: toPct(overview.variableExpenses), amount: overview.variableExpenses },
+    { key: 'savingTarget', pct: toPct(overview.savingTarget), amount: overview.savingTarget },
+    { key: 'freeBalance', pct: toPct(Math.max(overview.balance, 0)), amount: Math.max(overview.balance, 0) },
   ];
 }
 
@@ -182,4 +190,63 @@ export function getDashboardSummary(user: AuthUser | null, period: DashboardPeri
     monthlyExpenses: overview.totalExpenses,
     topCategoryKey,
   };
+}
+
+export function getRecentDashboardTransactions(
+  user: AuthUser | null,
+  period: DashboardPeriod = 'month',
+): RecentTransaction[] {
+  const overview = scaleOverview(getFinancialOverview(user), period);
+  const date = PERIOD_TRANSACTION_DATE[period];
+
+  if (overview.income <= 0 && overview.totalExpenses <= 0 && overview.savingTarget <= 0) {
+    return [];
+  }
+
+  return [
+    overview.income > 0
+      ? {
+          id: `${period}-income`,
+          merchant: 'Ingresos estimados',
+          category: 'Ingreso',
+          date,
+          method: 'Perfil financiero',
+          amount: overview.income,
+          type: 'Ingreso',
+        }
+      : null,
+    overview.fixedExpenses > 0
+      ? {
+          id: `${period}-fixed`,
+          merchant: 'Gastos fijos estimados',
+          category: 'Gastos fijos',
+          date,
+          method: 'Plan mensual',
+          amount: overview.fixedExpenses,
+          type: 'Gasto Fijo',
+        }
+      : null,
+    overview.variableExpenses > 0
+      ? {
+          id: `${period}-variable`,
+          merchant: 'Gastos variables estimados',
+          category: 'Gastos variables',
+          date,
+          method: 'Plan mensual',
+          amount: overview.variableExpenses,
+          type: 'Gasto Variable',
+        }
+      : null,
+    overview.savingTarget > 0
+      ? {
+          id: `${period}-savings`,
+          merchant: 'Ahorro meta estimado',
+          category: 'Ahorro',
+          date,
+          method: 'Plan financiero',
+          amount: overview.savingTarget,
+          type: 'Gasto Fijo',
+        }
+      : null,
+  ].filter(Boolean) as RecentTransaction[];
 }
