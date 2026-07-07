@@ -4,20 +4,15 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AxiosError } from 'axios';
-import { Apple, Mail, UserRound } from 'lucide-react';
+import { Mail, UserRound } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { AuthTextInput } from '@/components/auth/AuthTextInput';
 import { PasswordInput } from '@/components/auth/PasswordInput';
-import { SocialAuthButton } from '@/components/auth/SocialAuthButton';
 import { registerSchema, type RegisterFormValues } from '@/features/auth/schemas/auth.schema';
 import { authService } from '@/features/auth/services/auth.service';
 import { useAuthStore } from '@/store/slices/auth.store';
-
-function GoogleIcon() {
-  return <span className="text-xl font-black text-blue-600">G</span>;
-}
 
 type ApiErrorResponse = {
   message?: string | string[];
@@ -113,18 +108,7 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-          <SocialAuthButton icon={<GoogleIcon />}>Registrarse con Google</SocialAuthButton>
-          <SocialAuthButton icon={<Apple className="h-5 w-5 text-black" />}>Registrarse con Apple</SocialAuthButton>
-        </div>
-
-        <div className="my-7 flex items-center gap-5 text-sm font-medium text-slate-500">
-          <span className="h-px flex-1 bg-slate-200" />
-          o
-          <span className="h-px flex-1 bg-slate-200" />
-        </div>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+        <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5" noValidate>
           <div className="grid gap-5 sm:grid-cols-2">
             <AuthTextInput
               id="fullName"
@@ -216,5 +200,4 @@ export default function RegisterPage() {
     </AuthShell>
   );
 }
-
 

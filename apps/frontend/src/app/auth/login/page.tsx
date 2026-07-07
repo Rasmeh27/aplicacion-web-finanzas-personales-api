@@ -105,15 +105,27 @@ export default function LoginPage() {
       marketingTitle="Control claro para tus decisiones financieras"
       marketingVariant="login"
     >
-      <div className="mx-auto mt-16 w-full max-w-2xl lg:mt-24">
+      <div className="mx-auto mt-12 w-full max-w-2xl lg:mt-16">
         <div>
           <h1 className="text-5xl font-black tracking-tight text-slate-950 sm:text-6xl">Bienvenido</h1>
-          <p className="mt-5 max-w-md text-lg leading-8 text-slate-500">
-            Inicia sesión para administrar tu dinero, presupuestos, metas y gastos.
+          <p className="mt-4 max-w-xl text-lg leading-8 text-slate-500">
+            Entra a tu panel para controlar tu dinero con más claridad:
+            presupuestos, metas, gastos y movimientos en un solo lugar.
           </p>
+          <div className="mt-5 grid gap-3 text-sm font-bold text-slate-600 sm:grid-cols-3">
+            <span className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-blue-700">
+              Panel financiero
+            </span>
+            <span className="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-indigo-700">
+              Metas y ahorro
+            </span>
+            <span className="rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3 text-violet-700">
+              Gastos claros
+            </span>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="mt-10 space-y-5" noValidate>
+        <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5" noValidate>
           <AuthTextInput
             id="email"
             label="Correo"
@@ -167,4 +179,3 @@ export default function LoginPage() {
     </AuthShell>
   );
 }
-
