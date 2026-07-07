@@ -21,6 +21,12 @@ export function CategoryProgress({
         <span className="text-xs font-semibold text-slate-400">{caption}</span>
       </div>
 
+      {categories.length === 0 ? (
+        <div className="mt-5 rounded-2xl border border-dashed border-slate-200 px-4 py-8 text-center">
+          <p className="text-sm font-semibold text-slate-600">No hay gastos registrados en este período.</p>
+          <p className="mt-1 text-xs text-slate-400">Cuando registres gastos reales, aparecerán aquí por categoría.</p>
+        </div>
+      ) : (
       <ul className="mt-5 space-y-4">
         {categories.map((category) => (
           <li key={category.name}>
@@ -44,6 +50,7 @@ export function CategoryProgress({
           </li>
         ))}
       </ul>
+      )}
     </div>
   );
 }

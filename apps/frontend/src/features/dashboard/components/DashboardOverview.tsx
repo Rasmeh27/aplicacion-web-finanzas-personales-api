@@ -170,8 +170,19 @@ export function DashboardOverview() {
     setTransactionsLoading(true);
     try {
       const range = getPeriodRange(activePeriod);
-      const response = await transactionService.list({ ...range, limit: 100, offset: 0 });
-      setTransactions(response.items);
+      const pageSize = 100;
+      let offset = 0;
+      let hasMore = true;
+      const allItems: Transaction[] = [];
+
+      while (hasMore) {
+        const response = await transactionService.list({ ...range, limit: pageSize, offset });
+        allItems.push(...response.items);
+        hasMore = response.hasMore;
+        offset += pageSize;
+      }
+
+      setTransactions(allItems);
     } catch {
       setTransactions([]);
     } finally {
