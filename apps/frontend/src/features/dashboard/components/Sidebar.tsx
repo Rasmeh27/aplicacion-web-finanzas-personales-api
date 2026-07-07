@@ -76,7 +76,8 @@ function VersionBadge() {
 function HealthScoreCard() {
   const { t } = useTranslation();
   const user = useAuthStore((state) => state.user);
-  const { score, pct, tone } = getHealthScore(user);
+  const { score, pct, tone, letter } = getHealthScore(user);
+  const label = t(HEALTH_TONE_LABEL[tone]);
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -85,10 +86,22 @@ function HealthScoreCard() {
           {t('sidebar.healthScore')}
         </span>
         <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-bold', HEALTH_BADGE_STYLES[tone])}>
-          {t(HEALTH_TONE_LABEL[tone])}
+          {label}
         </span>
       </div>
-      <p className="mt-2 text-3xl font-black tracking-tight text-slate-950">{score}</p>
+      <div className="mt-3 flex items-end justify-between gap-3">
+        <div>
+          <p className="text-3xl font-black tracking-tight text-slate-950">{score}</p>
+          <p className="mt-0.5 text-xs font-bold text-slate-400">de 1000 puntos</p>
+        </div>
+        <div className="rounded-2xl border border-white bg-white px-3 py-2 text-center shadow-sm">
+          <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">Letra</p>
+          <p className="text-2xl font-black leading-none text-slate-950">{letter}</p>
+        </div>
+      </div>
+      <p className="mt-3 text-xs font-semibold text-slate-500">
+        Clasificación: <span className="font-black text-slate-700">{letter} · {label}</span>
+      </p>
       <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-200">
         <div className={cn('h-full rounded-full transition-all', HEALTH_BAR_STYLES[tone])} style={{ width: `${pct}%` }} />
       </div>

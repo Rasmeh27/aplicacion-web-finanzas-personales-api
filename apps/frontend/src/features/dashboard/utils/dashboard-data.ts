@@ -13,6 +13,7 @@ export type FinancialOverview = {
   savingsRate: number;
 };
 
+export type DashboardPeriod = 'today' | 'week' | 'month' | 'year';
 export type HealthTone = 'excellent' | 'good' | 'fair' | 'poor' | 'empty';
 
 export type HealthScore = {
@@ -21,6 +22,7 @@ export type HealthScore = {
   /** 0..100, useful for progress bars. */
   pct: number;
   tone: HealthTone;
+  letter: 'A+' | 'A' | 'B' | 'C' | 'D' | 'F';
 };
 
 export type SpendingBarKey = 'fixed' | 'variable' | 'savings' | 'balance';
@@ -41,6 +43,27 @@ const toNumber = (value: number | null | undefined): number =>
   typeof value === 'number' && Number.isFinite(value) ? value : 0;
 
 const clamp01 = (value: number): number => Math.min(Math.max(value, 0), 1);
+
+const PERIOD_MULTIPLIER: Record<DashboardPeriod, number> = {
+  today: 1 / 30,
+  week: 7 / 30,
+  month: 1,
+  year: 12,
+};
+
+const scaleOverview = (overview: FinancialOverview, period: DashboardPeriod): FinancialOverview => {
+  const multiplier = PERIOD_MULTIPLIER[period];
+
+  return {
+    ...overview,
+    income: overview.income * multiplier,
+    fixedExpenses: overview.fixedExpenses * multiplier,
+    variableExpenses: overview.variableExpenses * multiplier,
+    totalExpenses: overview.totalExpenses * multiplier,
+    savingTarget: overview.savingTarget * multiplier,
+    balance: overview.balance * multiplier,
+  };
+};
 
 /** Build a normalized financial overview from the logged-in user's profile data. */
 export function getFinancialOverview(user: AuthUser | null): FinancialOverview {
@@ -77,6 +100,15 @@ function getHealthTone(score: number): HealthTone {
   return 'poor';
 }
 
+function getHealthLetter(score: number): HealthScore['letter'] {
+  if (score >= 900) return 'A+';
+  if (score >= 800) return 'A';
+  if (score >= 650) return 'B';
+  if (score >= 450) return 'C';
+  if (score >= 250) return 'D';
+  return 'F';
+}
+
 /**
  * Heuristic financial health score derived from the user's own numbers:
  * - how little of their income goes to expenses,
@@ -87,7 +119,7 @@ export function getHealthScore(user: AuthUser | null): HealthScore {
   const overview = getFinancialOverview(user);
 
   if (overview.income <= 0) {
-    return { score: 0, pct: 0, tone: 'empty' };
+    return { score: 0, pct: 0, tone: 'empty', letter: 'F' };
   }
 
   const expenseScore = clamp01((1 - overview.expenseRatio) / 0.6); // spending <=40% of income -> full
@@ -97,12 +129,17 @@ export function getHealthScore(user: AuthUser | null): HealthScore {
   const score01 = 0.45 * expenseScore + 0.35 * savingsScore + 0.2 * surplusScore;
   const score = Math.round(score01 * 1000);
 
-  return { score, pct: Math.round(score01 * 100), tone: getHealthTone(score) };
+  return {
+    score,
+    pct: Math.round(score01 * 100),
+    tone: getHealthTone(score),
+    letter: getHealthLetter(score),
+  };
 }
 
 /** Monthly distribution bars (fixed, variable, savings, surplus) for the spending chart. */
-export function getSpendingBars(user: AuthUser | null): DerivedSpendingBar[] {
-  const overview = getFinancialOverview(user);
+export function getSpendingBars(user: AuthUser | null, period: DashboardPeriod = 'month'): DerivedSpendingBar[] {
+  const overview = scaleOverview(getFinancialOverview(user), period);
   const bars: DerivedSpendingBar[] = [
     { key: 'fixed', amount: overview.fixedExpenses },
     { key: 'variable', amount: overview.variableExpenses },
@@ -115,8 +152,8 @@ export function getSpendingBars(user: AuthUser | null): DerivedSpendingBar[] {
 }
 
 /** Expense / savings breakdown as a share of income. */
-export function getExpenseCategories(user: AuthUser | null): DerivedCategory[] {
-  const overview = getFinancialOverview(user);
+export function getExpenseCategories(user: AuthUser | null, period: DashboardPeriod = 'month'): DerivedCategory[] {
+  const overview = scaleOverview(getFinancialOverview(user), period);
   const reference = overview.income > 0 ? overview.income : overview.totalExpenses;
   const toPct = (value: number) => (reference > 0 ? Math.round((value / reference) * 100) : 0);
 
@@ -129,8 +166,8 @@ export function getExpenseCategories(user: AuthUser | null): DerivedCategory[] {
 }
 
 /** Top-line summary cards derived from the user's data. */
-export function getDashboardSummary(user: AuthUser | null): DerivedSummary {
-  const overview = getFinancialOverview(user);
+export function getDashboardSummary(user: AuthUser | null, period: DashboardPeriod = 'month'): DerivedSummary {
+  const overview = scaleOverview(getFinancialOverview(user), period);
 
   let topCategoryKey: TopCategoryKey = 'none';
   if (overview.variableExpenses > overview.fixedExpenses) {
