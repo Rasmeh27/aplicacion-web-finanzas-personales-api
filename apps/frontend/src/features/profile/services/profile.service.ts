@@ -4,6 +4,11 @@ import type { AuthUser } from '@/types/auth';
 export type UpdateUserPreferencesPayload = {
   fullName?: string;
   primaryCurrency: 'DOP' | 'USD' | 'EUR';
+  monthlyIncomeEstimate?: number;
+  monthlySavingTargetPct?: number;
+  monthlySavingTargetAmount?: number;
+  monthlyFixedExpenseEstimate?: number;
+  monthlyVariableExpenseEstimate?: number;
 };
 
 export type UserProfileResponse = Partial<AuthUser> & {

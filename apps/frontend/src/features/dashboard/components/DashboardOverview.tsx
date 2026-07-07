@@ -1,21 +1,16 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Tag, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import { useAuthStore } from '@/store/slices/auth.store';
 import { formatCurrency } from '@/shared/utils/format-currency';
 import { useTranslation } from '@/shared/i18n/useTranslation';
 import type { TranslationKey } from '@/shared/i18n/translations';
-import {
-  getDashboardSummary,
-  getExpenseCategories,
-  getRecentDashboardTransactions,
-  getSpendingBars,
-  type DashboardPeriod,
-  type ExpenseCategoryKey,
-  type SpendingBarKey,
-} from '../utils/dashboard-data';
+import { type DashboardPeriod } from '../utils/dashboard-data';
+import { transactionService } from '@/features/transactions/services/transaction.service';
+import { CLASSIFICATION_META, type Transaction } from '@/features/transactions/types';
+import type { RecentTransaction } from '../data/dashboard.mock';
 import { CategoryProgress } from './CategoryProgress';
 import { RecentTransactionsTable } from './RecentTransactionsTable';
 import { SpendingChartPlaceholder } from './SpendingChartPlaceholder';
@@ -59,18 +54,107 @@ const PERIOD_CHART_SUBTITLE: Record<DashboardPeriod, string> = {
   year: 'Gastos, ahorro y balance proyectados para el año',
 };
 
-const CHART_BAR_LABEL: Record<SpendingBarKey, TranslationKey> = {
-  fixed: 'chartBar.fixed',
-  variable: 'chartBar.variable',
-  savings: 'chartBar.savings',
-  balance: 'chartBar.balance',
+type DashboardSummaryView = {
+  balanceAvailable: number;
+  monthlyIncome: number;
+  monthlyExpenses: number;
 };
 
-const CATEGORY_LABEL: Record<ExpenseCategoryKey, TranslationKey> = {
-  fixedExpenses: 'category.fixedExpenses',
-  variableExpenses: 'category.variableExpenses',
-  savingTarget: 'category.savingTarget',
-  freeBalance: 'category.freeBalance',
+const toDateString = (date: Date): string =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+const getPeriodRange = (period: DashboardPeriod): { startDate: string; endDate: string } => {
+  const now = new Date();
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const start = new Date(end);
+
+  if (period === 'week') {
+    start.setDate(end.getDate() - 6);
+  } else if (period === 'month') {
+    start.setDate(1);
+  } else if (period === 'year') {
+    start.setMonth(0, 1);
+  }
+
+  return { startDate: toDateString(start), endDate: toDateString(end) };
+};
+
+const formatTxDate = (value: string): string => {
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('es-DO', { day: '2-digit', month: 'short', year: 'numeric' }).format(date);
+};
+
+const toRecentTransaction = (transaction: Transaction): RecentTransaction => {
+  const meta = CLASSIFICATION_META[transaction.classification];
+  const type =
+    transaction.classification === 'regular_income' || transaction.classification === 'extra_income'
+      ? 'Ingreso'
+      : transaction.classification === 'fixed_expense'
+        ? 'Gasto Fijo'
+        : 'Gasto Variable';
+
+  return {
+    id: transaction.id,
+    merchant: transaction.description || meta.label,
+    category: transaction.category?.name ?? meta.label,
+    date: formatTxDate(transaction.date),
+    method: 'Registrado',
+    amount: Number(transaction.amount),
+    type,
+  };
+};
+
+const buildRealDashboard = (transactions: Transaction[]) => {
+  const income = transactions
+    .filter((tx) => CLASSIFICATION_META[tx.classification].type === 'income')
+    .reduce((sum, tx) => sum + Number(tx.amount), 0);
+  const fixedExpenses = transactions
+    .filter((tx) => tx.classification === 'fixed_expense')
+    .reduce((sum, tx) => sum + Number(tx.amount), 0);
+  const variableExpenses = transactions
+    .filter((tx) => tx.classification === 'variable_expense')
+    .reduce((sum, tx) => sum + Number(tx.amount), 0);
+  const expenses = fixedExpenses + variableExpenses;
+  const balance = income - expenses;
+
+  const expensesByCategory = new Map<string, number>();
+  transactions
+    .filter((tx) => CLASSIFICATION_META[tx.classification].type === 'expense')
+    .forEach((tx) => {
+      const categoryName = tx.category?.name ?? CLASSIFICATION_META[tx.classification].label;
+      expensesByCategory.set(categoryName, (expensesByCategory.get(categoryName) ?? 0) + Number(tx.amount));
+    });
+
+  const [topCategoryName] = [...expensesByCategory.entries()].sort((a, b) => b[1] - a[1])[0] ?? [];
+
+  const summary: DashboardSummaryView = {
+    balanceAvailable: balance,
+    monthlyIncome: income,
+    monthlyExpenses: expenses,
+  };
+
+  return {
+    summary,
+    topCategoryLabel: topCategoryName ?? '-',
+    chartData: [
+      { label: 'Fijos', amount: fixedExpenses },
+      { label: 'Variables', amount: variableExpenses },
+      { label: 'Ahorro', amount: 0 },
+      { label: 'Balance', amount: Math.max(balance, 0) },
+    ].map((bar, _, bars) => ({
+      ...bar,
+      highlight: bar.amount > 0 && bar.amount === Math.max(...bars.map((item) => item.amount)),
+    })),
+    categoryData: [...expensesByCategory.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+      .map(([name, amount]) => ({
+        name,
+        amount,
+        pct: expenses > 0 ? Math.round((amount / expenses) * 100) : 0,
+      })),
+  };
 };
 
 export function DashboardOverview() {
@@ -79,33 +163,35 @@ export function DashboardOverview() {
   const user = useAuthStore((state) => state.user);
   const currency = user?.primaryCurrency ?? 'DOP';
   const [activePeriod, setActivePeriod] = useState<DashboardPeriod>('month');
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactionsLoading, setTransactionsLoading] = useState(false);
 
-  const summary = useMemo(() => getDashboardSummary(user, activePeriod), [activePeriod, user]);
-  const spendingBars = useMemo(() => getSpendingBars(user, activePeriod), [activePeriod, user]);
-  const categories = useMemo(() => getExpenseCategories(user, activePeriod), [activePeriod, user]);
-  const recentTransactions = useMemo(
-    () => getRecentDashboardTransactions(user, activePeriod),
-    [activePeriod, user],
-  );
+  const loadTransactions = useCallback(async () => {
+    setTransactionsLoading(true);
+    try {
+      const range = getPeriodRange(activePeriod);
+      const response = await transactionService.list({ ...range, limit: 100, offset: 0 });
+      setTransactions(response.items);
+    } catch {
+      setTransactions([]);
+    } finally {
+      setTransactionsLoading(false);
+    }
+  }, [activePeriod]);
+
+  useEffect(() => {
+    void loadTransactions();
+  }, [loadTransactions]);
+
+  const realDashboard = useMemo(() => buildRealDashboard(transactions), [transactions]);
+  const summary = realDashboard.summary;
 
   const money = (value: number) => formatCurrency(value, currency);
 
-  const chartData = spendingBars.map((bar) => ({
-    label: t(CHART_BAR_LABEL[bar.key]),
-    amount: bar.amount,
-    highlight: bar.highlight,
-  }));
-
-  const categoryData = categories.map((category) => ({
-    name: t(CATEGORY_LABEL[category.key]),
-    pct: category.pct,
-    amount: category.amount,
-  }));
-
-  const topCategoryLabel =
-    summary.topCategoryKey === 'none'
-      ? t('topCategory.none')
-      : t(summary.topCategoryKey === 'fixed' ? 'category.fixedExpenses' : 'category.variableExpenses');
+  const chartData = realDashboard.chartData;
+  const categoryData = realDashboard.categoryData;
+  const recentTransactions = transactions.slice(0, 6).map(toRecentTransaction);
+  const topCategoryLabel = realDashboard.topCategoryLabel;
 
   return (
     <>
@@ -178,8 +264,8 @@ export function DashboardOverview() {
           <SpendingChartPlaceholder
             data={chartData}
             currency={currency}
-            title={PERIOD_CHART_TITLE[activePeriod]}
-            subtitle={PERIOD_CHART_SUBTITLE[activePeriod]}
+          title={PERIOD_CHART_TITLE[activePeriod]}
+            subtitle={transactionsLoading ? 'Cargando movimientos reales...' : PERIOD_CHART_SUBTITLE[activePeriod]}
             legend={t('chart.legend')}
           />
         </div>

@@ -6,7 +6,16 @@ import { UpdateUserPreferencesDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 
 export type UpsertProfileData = Partial<
-  Pick<User, 'fullName' | 'primaryCurrency' | 'monthlyIncomeEstimate' | 'monthlySavingTargetPct'>
+  Pick<
+    User,
+    | 'fullName'
+    | 'primaryCurrency'
+    | 'monthlyIncomeEstimate'
+    | 'monthlySavingTargetPct'
+    | 'monthlySavingTargetAmount'
+    | 'monthlyFixedExpenseEstimate'
+    | 'monthlyVariableExpenseEstimate'
+  >
 >;
 
 @Injectable()
@@ -36,7 +45,15 @@ export class UserService {
   async updatePreferences(id: string, dto: UpdateUserPreferencesDto): Promise<User> {
     const primaryCurrency = dto.primaryCurrency ?? dto.currency;
     const fullName = dto.fullName?.trim();
-    return this.updateExistingProfile(id, { fullName, primaryCurrency });
+    return this.updateExistingProfile(id, {
+      fullName,
+      primaryCurrency,
+      monthlyIncomeEstimate: dto.monthlyIncomeEstimate,
+      monthlySavingTargetPct: dto.monthlySavingTargetPct,
+      monthlySavingTargetAmount: dto.monthlySavingTargetAmount,
+      monthlyFixedExpenseEstimate: dto.monthlyFixedExpenseEstimate,
+      monthlyVariableExpenseEstimate: dto.monthlyVariableExpenseEstimate,
+    });
   }
 
   async updateFinancialProfile(id: string, dto: UpdateFinancialProfileDto): Promise<User> {

@@ -61,6 +61,23 @@ const initialsFromName = (name?: string | null, email?: string | null): string =
   return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
 };
 
+const toMoneyInput = (value: number | null | undefined): string => {
+  const numeric = Number(value ?? 0);
+  return Number.isFinite(numeric) && numeric > 0 ? String(numeric) : '';
+};
+
+const parseMoneyInput = (value: string): number => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric >= 0 ? numeric : 0;
+};
+
+const formatMoney = (value: number | null | undefined, currency: string): string =>
+  new Intl.NumberFormat('es-DO', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  }).format(Number(value ?? 0));
+
 const normalizeProfile = (current: AuthUser, profile: UserProfileResponse): AuthUser => ({
   ...current,
   ...profile,
@@ -236,6 +253,11 @@ export function ProfileView() {
   const [settings, setSettings] = useState<NotificationSettings>(DEFAULT_SETTINGS);
   const [currency, setCurrency] = useState<CurrencyCode>(safeCurrency(user?.primaryCurrency));
   const [fullNameDraft, setFullNameDraft] = useState(user?.fullName?.trim() ?? '');
+  const [incomeDraft, setIncomeDraft] = useState(toMoneyInput(user?.monthlyIncomeEstimate));
+  const [fixedDraft, setFixedDraft] = useState(toMoneyInput(user?.monthlyFixedExpenseEstimate));
+  const [variableDraft, setVariableDraft] = useState(toMoneyInput(user?.monthlyVariableExpenseEstimate));
+  const [savingAmountDraft, setSavingAmountDraft] = useState(toMoneyInput(user?.monthlySavingTargetAmount));
+  const [savingPctDraft, setSavingPctDraft] = useState(toMoneyInput(user?.monthlySavingTargetPct));
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(false);
@@ -269,6 +291,20 @@ export function ProfileView() {
   }, [user?.fullName]);
 
   useEffect(() => {
+    setIncomeDraft(toMoneyInput(user?.monthlyIncomeEstimate));
+    setFixedDraft(toMoneyInput(user?.monthlyFixedExpenseEstimate));
+    setVariableDraft(toMoneyInput(user?.monthlyVariableExpenseEstimate));
+    setSavingAmountDraft(toMoneyInput(user?.monthlySavingTargetAmount));
+    setSavingPctDraft(toMoneyInput(user?.monthlySavingTargetPct));
+  }, [
+    user?.monthlyFixedExpenseEstimate,
+    user?.monthlyIncomeEstimate,
+    user?.monthlySavingTargetAmount,
+    user?.monthlySavingTargetPct,
+    user?.monthlyVariableExpenseEstimate,
+  ]);
+
+  useEffect(() => {
     if (!user || !accessToken) return;
     if (syncedUserIdRef.current === user.id) return;
 
@@ -294,6 +330,11 @@ export function ProfileView() {
   const openEditProfile = () => {
     setFullNameDraft(user?.fullName?.trim() ?? '');
     setCurrency(selectedCurrency);
+    setIncomeDraft(toMoneyInput(user?.monthlyIncomeEstimate));
+    setFixedDraft(toMoneyInput(user?.monthlyFixedExpenseEstimate));
+    setVariableDraft(toMoneyInput(user?.monthlyVariableExpenseEstimate));
+    setSavingAmountDraft(toMoneyInput(user?.monthlySavingTargetAmount));
+    setSavingPctDraft(toMoneyInput(user?.monthlySavingTargetPct));
     setEditOpen(true);
   };
 
@@ -309,7 +350,21 @@ export function ProfileView() {
     setMessage(null);
 
     try {
-      const updated = await profileService.updatePreferences({ fullName, primaryCurrency: currency });
+      const savingPct = parseMoneyInput(savingPctDraft);
+      if (savingPct > 100) {
+        setMessage('La meta de ahorro en porcentaje no puede ser mayor a 100%.');
+        return;
+      }
+
+      const updated = await profileService.updatePreferences({
+        fullName,
+        primaryCurrency: currency,
+        monthlyIncomeEstimate: parseMoneyInput(incomeDraft),
+        monthlyFixedExpenseEstimate: parseMoneyInput(fixedDraft),
+        monthlyVariableExpenseEstimate: parseMoneyInput(variableDraft),
+        monthlySavingTargetAmount: parseMoneyInput(savingAmountDraft),
+        monthlySavingTargetPct: savingPct,
+      });
       setAuth(normalizeProfile(user, updated), accessToken, refreshToken);
       setEditOpen(false);
       setMessage('Perfil actualizado correctamente.');
@@ -406,6 +461,10 @@ export function ProfileView() {
             <InfoRow label="Correo electrónico" value={displayEmail} />
             <InfoRow label="Teléfono" value="No configurado" muted />
             <InfoRow label="Moneda" value={CURRENCY_LABELS[selectedCurrency]} />
+            <InfoRow label="Ingreso mensual estimado" value={formatMoney(user?.monthlyIncomeEstimate, selectedCurrency)} />
+            <InfoRow label="Gastos fijos estimados" value={formatMoney(user?.monthlyFixedExpenseEstimate, selectedCurrency)} />
+            <InfoRow label="Gastos variables estimados" value={formatMoney(user?.monthlyVariableExpenseEstimate, selectedCurrency)} />
+            <InfoRow label="Meta de ahorro" value={`${formatMoney(user?.monthlySavingTargetAmount, selectedCurrency)} · ${Number(user?.monthlySavingTargetPct ?? 0)}%`} />
             <InfoRow label="País" value="República Dominicana" />
             <InfoRow label="Zona horaria" value="UTC-4 (AST)" />
           </dl>
@@ -483,7 +542,7 @@ export function ProfileView() {
       <Modal
         open={editOpen}
         title="Editar perfil"
-        description="Actualiza tu nombre y la moneda principal de la cuenta."
+        description="Corrige tus datos personales y financieros si te equivocaste al configurar la aplicación."
         onClose={() => setEditOpen(false)}
         footer={
           <>
@@ -507,6 +566,7 @@ export function ProfileView() {
           </>
         }
       >
+        <div className="max-h-[65vh] space-y-4 overflow-y-auto pr-1">
         <label htmlFor="profileFullName" className="block text-sm font-bold text-slate-950">
           Nombre completo
         </label>
@@ -534,6 +594,85 @@ export function ProfileView() {
             </option>
           ))}
         </select>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="profileIncome" className="block text-sm font-bold text-slate-950">
+              Ingreso mensual estimado
+            </label>
+            <input
+              id="profileIncome"
+              type="number"
+              min="0"
+              step="0.01"
+              value={incomeDraft}
+              onChange={(event) => setIncomeDraft(event.target.value)}
+              placeholder="0.00"
+              className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+            />
+          </div>
+          <div>
+            <label htmlFor="profileSavingPct" className="block text-sm font-bold text-slate-950">
+              Ahorro meta (%)
+            </label>
+            <input
+              id="profileSavingPct"
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              value={savingPctDraft}
+              onChange={(event) => setSavingPctDraft(event.target.value)}
+              placeholder="0"
+              className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+            />
+          </div>
+          <div>
+            <label htmlFor="profileFixed" className="block text-sm font-bold text-slate-950">
+              Gastos fijos mensuales
+            </label>
+            <input
+              id="profileFixed"
+              type="number"
+              min="0"
+              step="0.01"
+              value={fixedDraft}
+              onChange={(event) => setFixedDraft(event.target.value)}
+              placeholder="0.00"
+              className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+            />
+          </div>
+          <div>
+            <label htmlFor="profileVariable" className="block text-sm font-bold text-slate-950">
+              Gastos variables mensuales
+            </label>
+            <input
+              id="profileVariable"
+              type="number"
+              min="0"
+              step="0.01"
+              value={variableDraft}
+              onChange={(event) => setVariableDraft(event.target.value)}
+              placeholder="0.00"
+              className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+            />
+          </div>
+        </div>
+
+        <label htmlFor="profileSavingAmount" className="block text-sm font-bold text-slate-950">
+          Ahorro meta mensual
+        </label>
+        <input
+          id="profileSavingAmount"
+          type="number"
+          min="0"
+          step="0.01"
+          value={savingAmountDraft}
+          onChange={(event) => setSavingAmountDraft(event.target.value)}
+          placeholder="0.00"
+          className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+        />
+        </div>
       </Modal>
 
       <Modal open={Boolean(soonMessage)} title="Función pendiente" onClose={() => setSoonMessage(null)}>
@@ -563,4 +702,3 @@ export function ProfileView() {
     </>
   );
 }
-
