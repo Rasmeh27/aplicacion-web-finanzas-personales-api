@@ -235,6 +235,7 @@ export function ProfileView() {
 
   const [settings, setSettings] = useState<NotificationSettings>(DEFAULT_SETTINGS);
   const [currency, setCurrency] = useState<CurrencyCode>(safeCurrency(user?.primaryCurrency));
+  const [fullNameDraft, setFullNameDraft] = useState(user?.fullName?.trim() ?? '');
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(false);
@@ -264,6 +265,10 @@ export function ProfileView() {
   }, [selectedCurrency]);
 
   useEffect(() => {
+    setFullNameDraft(user?.fullName?.trim() ?? '');
+  }, [user?.fullName]);
+
+  useEffect(() => {
     if (!user || !accessToken) return;
     if (syncedUserIdRef.current === user.id) return;
 
@@ -286,18 +291,30 @@ export function ProfileView() {
     setSettings((current) => ({ ...current, [key]: !current[key] }));
   };
 
+  const openEditProfile = () => {
+    setFullNameDraft(user?.fullName?.trim() ?? '');
+    setCurrency(selectedCurrency);
+    setEditOpen(true);
+  };
+
   const handleSavePreferences = async () => {
     if (!user) return;
+    const fullName = fullNameDraft.trim();
+    if (fullName.length < 2) {
+      setMessage('El nombre debe tener al menos 2 caracteres.');
+      return;
+    }
+
     setSaving(true);
     setMessage(null);
 
     try {
-      const updated = await profileService.updatePreferences({ primaryCurrency: currency });
+      const updated = await profileService.updatePreferences({ fullName, primaryCurrency: currency });
       setAuth(normalizeProfile(user, updated), accessToken, refreshToken);
       setEditOpen(false);
-      setMessage('Preferencias actualizadas correctamente.');
+      setMessage('Perfil actualizado correctamente.');
     } catch {
-      setMessage('No se pudieron guardar las preferencias. Inténtalo nuevamente.');
+      setMessage('No se pudo guardar el perfil. Inténtalo nuevamente.');
     } finally {
       setSaving(false);
     }
@@ -350,7 +367,7 @@ export function ProfileView() {
 
             <button
               type="button"
-              onClick={() => setEditOpen(true)}
+              onClick={openEditProfile}
               className="inline-flex items-center justify-center rounded-2xl border border-indigo-100 bg-indigo-50 px-5 py-3 text-sm font-black text-indigo-700 transition hover:border-indigo-200 hover:bg-indigo-100"
             >
               Editar perfil
@@ -371,7 +388,7 @@ export function ProfileView() {
           action={
             <button
               type="button"
-              onClick={() => setEditOpen(true)}
+              onClick={openEditProfile}
               className="text-sm font-black text-indigo-600 transition hover:text-indigo-700"
             >
               Editar
@@ -466,7 +483,7 @@ export function ProfileView() {
       <Modal
         open={editOpen}
         title="Editar perfil"
-        description="Por ahora el backend permite actualizar la moneda principal de la cuenta."
+        description="Actualiza tu nombre y la moneda principal de la cuenta."
         onClose={() => setEditOpen(false)}
         footer={
           <>
@@ -490,7 +507,19 @@ export function ProfileView() {
           </>
         }
       >
-        <label htmlFor="profileCurrency" className="block text-sm font-bold text-slate-950">
+        <label htmlFor="profileFullName" className="block text-sm font-bold text-slate-950">
+          Nombre completo
+        </label>
+        <input
+          id="profileFullName"
+          type="text"
+          value={fullNameDraft}
+          onChange={(event) => setFullNameDraft(event.target.value)}
+          placeholder="Ingresa tu nombre"
+          className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+        />
+
+        <label htmlFor="profileCurrency" className="mt-4 block text-sm font-bold text-slate-950">
           Moneda principal
         </label>
         <select
@@ -534,6 +563,4 @@ export function ProfileView() {
     </>
   );
 }
-
-
 

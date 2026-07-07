@@ -4,25 +4,22 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AxiosError } from 'axios';
-import { Apple, Mail } from 'lucide-react';
-import { useState } from 'react';
+import { Mail } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { AuthTextInput } from '@/components/auth/AuthTextInput';
 import { PasswordInput } from '@/components/auth/PasswordInput';
-import { SocialAuthButton } from '@/components/auth/SocialAuthButton';
 import { loginSchema, type LoginFormValues } from '@/features/auth/schemas/auth.schema';
 import { authService } from '@/features/auth/services/auth.service';
 import { useAuthStore } from '@/store/slices/auth.store';
-
-function GoogleIcon() {
-  return <span className="text-xl font-black text-blue-600">G</span>;
-}
 
 type ApiErrorResponse = {
   code?: string;
   message?: string | string[];
 };
+
+const REMEMBERED_EMAIL_KEY = 'moni-remembered-email';
 
 const getErrorMessage = (message: ApiErrorResponse['message']) => {
   if (Array.isArray(message)) {
@@ -36,10 +33,12 @@ export default function LoginPage() {
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [rememberUser, setRememberUser] = useState(false);
 
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -49,12 +48,25 @@ export default function LoginPage() {
     },
   });
 
+  useEffect(() => {
+    const rememberedEmail = window.localStorage.getItem(REMEMBERED_EMAIL_KEY);
+    if (!rememberedEmail) return;
+
+    setValue('email', rememberedEmail, { shouldDirty: false });
+    setRememberUser(true);
+  }, [setValue]);
+
   const onSubmit = async (values: LoginFormValues) => {
     setServerError(null);
 
     try {
       const response = await authService.login(values);
       setAuth(response.user, response.accessToken, response.refreshToken);
+      if (rememberUser) {
+        window.localStorage.setItem(REMEMBERED_EMAIL_KEY, values.email);
+      } else {
+        window.localStorage.removeItem(REMEMBERED_EMAIL_KEY);
+      }
 
       if (!response.user.onboardingCompletedAt) {
         router.replace('/onboarding/financial-profile');
@@ -95,24 +107,13 @@ export default function LoginPage() {
     >
       <div className="mx-auto mt-16 w-full max-w-2xl lg:mt-24">
         <div>
-          <h1 className="text-5xl font-black tracking-tight text-slate-950 sm:text-6xl">Bienvenido de nuevo</h1>
+          <h1 className="text-5xl font-black tracking-tight text-slate-950 sm:text-6xl">Bienvenido</h1>
           <p className="mt-5 max-w-md text-lg leading-8 text-slate-500">
             Inicia sesión para administrar tu dinero, presupuestos, metas y gastos.
           </p>
         </div>
 
-        <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-          <SocialAuthButton icon={<GoogleIcon />}>Entrar con Google</SocialAuthButton>
-          <SocialAuthButton icon={<Apple className="h-5 w-5 text-black" />}>Entrar con Apple</SocialAuthButton>
-        </div>
-
-        <div className="my-8 flex items-center gap-5 text-sm font-medium text-slate-500">
-          <span className="h-px flex-1 bg-slate-200" />
-          o
-          <span className="h-px flex-1 bg-slate-200" />
-        </div>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+        <form onSubmit={handleSubmit(onSubmit)} className="mt-10 space-y-5" noValidate>
           <AuthTextInput
             id="email"
             label="Correo"
@@ -133,7 +134,16 @@ export default function LoginPage() {
             {...register('password')}
           />
 
-          <div className="flex justify-end">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-slate-600">
+              <input
+                type="checkbox"
+                checked={rememberUser}
+                onChange={(event) => setRememberUser(event.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              Recordar usuario
+            </label>
             <Link href="/forgot-password" className="text-sm font-bold text-blue-600 transition hover:text-blue-700">
               ¿Olvidaste tu contraseña?
             </Link>
@@ -157,5 +167,4 @@ export default function LoginPage() {
     </AuthShell>
   );
 }
-
 

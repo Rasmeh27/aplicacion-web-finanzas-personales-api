@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarDays, Pencil, Plus, ShieldCheck, Trash2 } from 'lucide-react';
+import { Archive, CalendarDays, Eye, Pencil, ShieldCheck, Trash2, WalletCards } from 'lucide-react';
 import { cn } from '@/shared/utils/cn';
 import { formatCurrency } from '@/shared/utils/format-currency';
 import { GOAL_STATUS_META, type FinancialGoal } from '../types';
@@ -8,7 +8,9 @@ import { GOAL_STATUS_META, type FinancialGoal } from '../types';
 type Props = {
   goal: FinancialGoal;
   onAddFunds: (goal: FinancialGoal) => void;
+  onView: (goal: FinancialGoal) => void;
   onEdit: (goal: FinancialGoal) => void;
+  onMarkInactive: (goal: FinancialGoal) => void;
   onDelete: (goal: FinancialGoal) => void;
 };
 
@@ -20,13 +22,14 @@ const formatDate = (value: string): string => {
   );
 };
 
-export function GoalCard({ goal, onAddFunds, onEdit, onDelete }: Props) {
+export function GoalCard({ goal, onAddFunds, onView, onEdit, onMarkInactive, onDelete }: Props) {
   const target = Number(goal.targetAmount);
   const current = Number(goal.currentAmount);
   const remaining = Math.max(target - current, 0);
   const pct = target > 0 ? Math.min(Math.round((current / target) * 100), 100) : 0;
   const statusMeta = GOAL_STATUS_META[goal.status];
   const canContribute = goal.status === 'active' || goal.status === 'paused';
+  const canMarkInactive = !goal.isDefault && goal.status !== 'cancelled';
 
   return (
     <div
@@ -58,6 +61,14 @@ export function GoalCard({ goal, onAddFunds, onEdit, onDelete }: Props) {
           </span>
         </div>
         <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => onView(goal)}
+            aria-label="Ver detalle de la meta"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-indigo-200 hover:text-indigo-600"
+          >
+            <Eye className="h-4 w-4" />
+          </button>
           <button
             type="button"
             onClick={() => onEdit(goal)}
@@ -109,15 +120,27 @@ export function GoalCard({ goal, onAddFunds, onEdit, onDelete }: Props) {
 
       <div className="mt-5 flex-1" />
 
-      <button
-        type="button"
-        onClick={() => onAddFunds(goal)}
-        disabled={!canContribute}
-        className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm shadow-indigo-600/25 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <Plus className="h-4 w-4" />
-        Agregar fondos
-      </button>
+      <div className="mt-2 grid gap-2">
+        <button
+          type="button"
+          onClick={() => onAddFunds(goal)}
+          disabled={!canContribute}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm shadow-indigo-600/25 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <WalletCards className="h-4 w-4" />
+          Gestionar fondos
+        </button>
+        {canMarkInactive ? (
+          <button
+            type="button"
+            onClick={() => onMarkInactive(goal)}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:border-amber-200 hover:bg-amber-50 hover:text-amber-700"
+          >
+            <Archive className="h-4 w-4" />
+            Pasar a inactiva
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }

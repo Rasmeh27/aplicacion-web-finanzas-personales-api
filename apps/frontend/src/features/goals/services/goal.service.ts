@@ -45,6 +45,11 @@ export const goalService = {
     return data;
   },
 
+  async listContributions(id: string): Promise<GoalContribution[]> {
+    const { data } = await apiClient.get<GoalContribution[]>(`/planning/goals/${id}/contributions`);
+    return data;
+  },
+
   async configureEmergencyFund(
     payload: ConfigureEmergencyFundPayload = {},
   ): Promise<FinancialGoal> {

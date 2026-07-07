@@ -3,6 +3,15 @@ import { IsOptional, IsString, Length, Matches } from 'class-validator';
 
 export class UpdateUserPreferencesDto {
   @ApiPropertyOptional({
+    example: 'Fabian Alcantara',
+    description: 'Nombre completo que se muestra en el perfil.',
+  })
+  @IsOptional()
+  @IsString()
+  @Length(2, 120)
+  fullName?: string;
+
+  @ApiPropertyOptional({
     example: 'DOP',
     description: 'Moneda principal del usuario en formato ISO 4217.',
   })

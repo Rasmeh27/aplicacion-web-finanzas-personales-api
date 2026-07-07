@@ -1,20 +1,21 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { ArrowDownCircle, ArrowUpCircle, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2 } from 'lucide-react';
 import { Modal } from '@/shared/components/Modal';
+import { cn } from '@/shared/utils/cn';
 import { formatCurrency } from '@/shared/utils/format-currency';
 import { contributionSchema, type ContributionFormValues } from '../schemas/goal.schema';
-import type { CreateContributionPayload, FinancialGoal } from '../types';
+import type { FinancialGoal, ManageFundsPayload } from '../types';
 
 type Props = {
   open: boolean;
   goal: FinancialGoal | null;
   serverError?: string | null;
   onClose: () => void;
-  onSubmit: (payload: CreateContributionPayload) => Promise<void>;
+  onSubmit: (payload: ManageFundsPayload) => Promise<void>;
 };
 
 const todayString = (): string => {
@@ -25,10 +26,12 @@ const todayString = (): string => {
 };
 
 export function ContributionModal({ open, goal, serverError, onClose, onSubmit }: Props) {
+  const [action, setAction] = useState<'add' | 'withdraw'>('add');
   const {
     register,
     handleSubmit,
     reset,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<ContributionFormValues>({
     resolver: zodResolver(contributionSchema),
@@ -40,6 +43,7 @@ export function ContributionModal({ open, goal, serverError, onClose, onSubmit }
   });
 
   useEffect(() => {
+    setAction('add');
     reset({
       amount: undefined,
       contributionDate: todayString(),
@@ -48,8 +52,18 @@ export function ContributionModal({ open, goal, serverError, onClose, onSubmit }
   }, [open, reset]);
 
   const submit = handleSubmit(async (values) => {
+    const amount = Number(values.amount);
+    if (action === 'withdraw' && goal && amount > Number(goal.currentAmount)) {
+      setError('amount', {
+        type: 'max',
+        message: 'No puedes retirar más de lo que tienes ahorrado.',
+      });
+      return;
+    }
+
     await onSubmit({
-      amount: Number(values.amount),
+      action,
+      amount,
       contributionDate: values.contributionDate,
       note: values.note,
     });
@@ -58,21 +72,45 @@ export function ContributionModal({ open, goal, serverError, onClose, onSubmit }
   const remaining = goal
     ? Math.max(Number(goal.targetAmount) - Number(goal.currentAmount), 0)
     : 0;
+  const saved = goal ? Number(goal.currentAmount) : 0;
 
   return (
     <Modal
       open={open}
-      title="Agregar fondos"
-      description={goal ? `Aporte a "${goal.name}"` : undefined}
+      title="Gestionar fondos"
+      description={goal ? `Movimientos de "${goal.name}"` : undefined}
       onClose={onClose}
     >
       {goal ? (
         <p className="mb-4 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-          Falta {formatCurrency(remaining, goal.currency)} para completar esta meta.
+          Tienes {formatCurrency(saved, goal.currency)} ahorrados. Falta{' '}
+          {formatCurrency(remaining, goal.currency)} para completar esta meta.
         </p>
       ) : null}
 
       <form onSubmit={submit} className="space-y-4" noValidate>
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { value: 'add' as const, label: 'Agregar fondos', icon: ArrowUpCircle },
+            { value: 'withdraw' as const, label: 'Retirar fondos', icon: ArrowDownCircle },
+          ].map(({ value, label, icon: Icon }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setAction(value)}
+              className={cn(
+                'inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-black transition',
+                action === value
+                  ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
+                  : 'border-slate-200 bg-white text-slate-500 hover:border-indigo-100 hover:text-indigo-600',
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {label}
+            </button>
+          ))}
+        </div>
+
         <div>
           <label htmlFor="contribution-amount" className="mb-1.5 block text-sm font-semibold text-slate-800">
             Monto
@@ -143,7 +181,7 @@ export function ContributionModal({ open, goal, serverError, onClose, onSubmit }
             className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm shadow-indigo-600/25 transition hover:bg-indigo-700 disabled:opacity-60"
           >
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Agregar fondos
+            {action === 'add' ? 'Agregar fondos' : 'Retirar fondos'}
           </button>
         </div>
       </form>

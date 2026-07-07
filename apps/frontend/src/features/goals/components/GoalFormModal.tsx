@@ -30,6 +30,7 @@ type Props = {
   submitLabel: string;
   lockName?: boolean;
   initialValues?: GoalFormInitialValues;
+  resetKey?: number;
   defaultCurrency: string;
   serverError?: string | null;
   onClose: () => void;
@@ -50,6 +51,7 @@ export function GoalFormModal({
   submitLabel,
   lockName = false,
   initialValues,
+  resetKey,
   defaultCurrency,
   serverError,
   onClose,
@@ -79,7 +81,7 @@ export function GoalFormModal({
       currency: normalizeCurrency(initialValues?.currency ?? defaultCurrency),
       targetDate: initialValues?.targetDate ?? undefined,
     } as unknown as GoalFormValues);
-  }, [open, initialValues, defaultCurrency, reset]);
+  }, [open, resetKey, initialValues, defaultCurrency, reset]);
 
   const submit = handleSubmit(async (values) => {
     await onSubmit({

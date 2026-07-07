@@ -35,7 +35,8 @@ export class UserService {
 
   async updatePreferences(id: string, dto: UpdateUserPreferencesDto): Promise<User> {
     const primaryCurrency = dto.primaryCurrency ?? dto.currency;
-    return this.updateExistingProfile(id, { primaryCurrency });
+    const fullName = dto.fullName?.trim();
+    return this.updateExistingProfile(id, { fullName, primaryCurrency });
   }
 
   async updateFinancialProfile(id: string, dto: UpdateFinancialProfileDto): Promise<User> {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Plus, Target } from 'lucide-react';
 import { useAuthStore } from '@/store/slices/auth.store';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
@@ -8,15 +8,19 @@ import { goalService } from '../services/goal.service';
 import type {
   CreateContributionPayload,
   FinancialGoal,
+  GoalContribution,
   GoalsSummary,
+  ManageFundsPayload,
 } from '../types';
 import { GoalSummaryCards } from './GoalSummaryCards';
 import { GoalCard } from './GoalCard';
 import { EmergencyFundCard } from './EmergencyFundCard';
 import { GoalFormModal, type GoalFormPayload } from './GoalFormModal';
 import { ContributionModal } from './ContributionModal';
+import { GoalDetailModal } from './GoalDetailModal';
 
 type GoalModalIntent = 'create' | 'edit' | 'emergency';
+type GoalFilter = 'all' | 'active' | 'completed' | 'inactive';
 
 const getErrorMessage = (error: unknown, fallback: string): string => {
   const maybe = error as { response?: { data?: { message?: string | string[] } } };
@@ -32,17 +36,23 @@ export function GoalsView() {
   const [summary, setSummary] = useState<GoalsSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [goals, setGoals] = useState<FinancialGoal[]>([]);
+  const [goalFilter, setGoalFilter] = useState<GoalFilter>('all');
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const [goalModalOpen, setGoalModalOpen] = useState(false);
+  const [goalFormRevision, setGoalFormRevision] = useState(0);
   const [goalIntent, setGoalIntent] = useState<GoalModalIntent>('create');
   const [editingGoal, setEditingGoal] = useState<FinancialGoal | null>(null);
   const [goalFormError, setGoalFormError] = useState<string | null>(null);
 
   const [contributionGoal, setContributionGoal] = useState<FinancialGoal | null>(null);
   const [contributionError, setContributionError] = useState<string | null>(null);
+  const [detailGoal, setDetailGoal] = useState<FinancialGoal | null>(null);
+  const [detailContributions, setDetailContributions] = useState<GoalContribution[]>([]);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
 
   const [deleteTarget, setDeleteTarget] = useState<FinancialGoal | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -82,6 +92,7 @@ export function GoalsView() {
     setGoalIntent('create');
     setEditingGoal(null);
     setGoalFormError(null);
+    setGoalFormRevision((current) => current + 1);
     setGoalModalOpen(true);
   };
 
@@ -89,6 +100,7 @@ export function GoalsView() {
     setGoalIntent('edit');
     setEditingGoal(goal);
     setGoalFormError(null);
+    setGoalFormRevision((current) => current + 1);
     setGoalModalOpen(true);
   };
 
@@ -96,7 +108,22 @@ export function GoalsView() {
     setGoalIntent('emergency');
     setEditingGoal(null);
     setGoalFormError(null);
+    setGoalFormRevision((current) => current + 1);
     setGoalModalOpen(true);
+  };
+
+  const openDetail = async (goal: FinancialGoal) => {
+    setDetailGoal(goal);
+    setDetailContributions([]);
+    setDetailError(null);
+    setDetailLoading(true);
+    try {
+      setDetailContributions(await goalService.listContributions(goal.id));
+    } catch (error) {
+      setDetailError(getErrorMessage(error, 'No se pudieron cargar los aportes de esta meta.'));
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
   const handleGoalSubmit = async (payload: GoalFormPayload) => {
@@ -122,15 +149,39 @@ export function GoalsView() {
     }
   };
 
-  const handleContribution = async (payload: CreateContributionPayload) => {
+  const handleContribution = async (payload: ManageFundsPayload) => {
     if (!contributionGoal) return;
     setContributionError(null);
     try {
-      await goalService.addContribution(contributionGoal.id, payload);
+      if (payload.action === 'add') {
+        const contributionPayload: CreateContributionPayload = {
+          amount: payload.amount,
+          currency: payload.currency,
+          contributionDate: payload.contributionDate,
+          note: payload.note,
+        };
+        await goalService.addContribution(contributionGoal.id, contributionPayload);
+      } else {
+        const currentAmount = Math.max(
+          Number(contributionGoal.currentAmount) - Number(payload.amount),
+          0,
+        );
+        await goalService.update(contributionGoal.id, { currentAmount });
+      }
       setContributionGoal(null);
       await refreshAll();
     } catch (error) {
-      setContributionError(getErrorMessage(error, 'No se pudo registrar el aporte.'));
+      setContributionError(getErrorMessage(error, 'No se pudo gestionar el movimiento.'));
+    }
+  };
+
+  const markInactive = async (goal: FinancialGoal) => {
+    setActionError(null);
+    try {
+      await goalService.update(goal.id, { status: 'cancelled' });
+      await refreshAll();
+    } catch (error) {
+      setActionError(getErrorMessage(error, 'No se pudo pasar la meta a inactiva.'));
     }
   };
 
@@ -151,6 +202,21 @@ export function GoalsView() {
 
   const emergencyInfo = summary?.emergencyFund;
   const showEmergencyCard = emergencyInfo && emergencyInfo.status !== 'active';
+  const filteredGoals = useMemo(() => {
+    if (goalFilter === 'active') return goals.filter((goal) => goal.status === 'active');
+    if (goalFilter === 'completed') return goals.filter((goal) => goal.status === 'completed');
+    if (goalFilter === 'inactive') {
+      return goals.filter((goal) => goal.status === 'cancelled' || goal.status === 'paused');
+    }
+    return goals;
+  }, [goalFilter, goals]);
+
+  const filterOptions: Array<{ value: GoalFilter; label: string }> = [
+    { value: 'all', label: 'Todas' },
+    { value: 'active', label: 'Activas' },
+    { value: 'completed', label: 'Completadas' },
+    { value: 'inactive', label: 'Inactivas' },
+  ];
 
   const goalModalConfig = (() => {
     if (goalIntent === 'emergency') {
@@ -230,6 +296,23 @@ export function GoalsView() {
         </div>
       ) : null}
 
+      <div className="mt-6 flex flex-wrap gap-2">
+        {filterOptions.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => setGoalFilter(option.value)}
+            className={`rounded-xl px-4 py-2 text-sm font-black transition ${
+              goalFilter === option.value
+                ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/20'
+                : 'border border-slate-200 bg-white text-slate-500 hover:border-indigo-200 hover:text-indigo-600'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
       {listError ? (
         <div className="mt-6 flex items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
           <span className="flex items-center gap-2">
@@ -272,9 +355,13 @@ export function GoalsView() {
             </button>
           </div>
         ) : null
+      ) : filteredGoals.length === 0 ? (
+        <div className="mt-6 rounded-3xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center text-sm font-semibold text-slate-500">
+          No hay metas en este filtro.
+        </div>
       ) : (
         <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {goals.map((goal) => (
+          {filteredGoals.map((goal) => (
             <GoalCard
               key={goal.id}
               goal={goal}
@@ -282,7 +369,9 @@ export function GoalsView() {
                 setContributionError(null);
                 setContributionGoal(g);
               }}
+              onView={(g) => void openDetail(g)}
               onEdit={openEdit}
+              onMarkInactive={(g) => void markInactive(g)}
               onDelete={(g) => setDeleteTarget(g)}
             />
           ))}
@@ -296,6 +385,7 @@ export function GoalsView() {
         submitLabel={goalModalConfig.submitLabel}
         lockName={goalModalConfig.lockName}
         initialValues={goalModalConfig.initialValues}
+        resetKey={goalFormRevision}
         defaultCurrency={currency}
         serverError={goalFormError}
         onClose={() => setGoalModalOpen(false)}
@@ -308,6 +398,15 @@ export function GoalsView() {
         serverError={contributionError}
         onClose={() => setContributionGoal(null)}
         onSubmit={handleContribution}
+      />
+
+      <GoalDetailModal
+        open={Boolean(detailGoal)}
+        goal={detailGoal}
+        contributions={detailContributions}
+        loading={detailLoading}
+        error={detailError}
+        onClose={() => setDetailGoal(null)}
       />
 
       <ConfirmDialog

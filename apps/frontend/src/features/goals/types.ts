@@ -63,6 +63,10 @@ export type CreateContributionPayload = {
   note?: string;
 };
 
+export type ManageFundsPayload = CreateContributionPayload & {
+  action: 'add' | 'withdraw';
+};
+
 export type ConfigureEmergencyFundPayload = {
   targetAmount?: number;
   currentAmount?: number;

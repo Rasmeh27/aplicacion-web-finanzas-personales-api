@@ -2,6 +2,7 @@ import apiClient from '@/lib/api/client';
 import type { AuthUser } from '@/types/auth';
 
 export type UpdateUserPreferencesPayload = {
+  fullName?: string;
   primaryCurrency: 'DOP' | 'USD' | 'EUR';
 };
 
