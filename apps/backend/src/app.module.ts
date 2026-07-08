@@ -11,6 +11,8 @@ import { PlanningModule } from './modules/planning/planning.module';
 import { DashboardReportsModule } from './modules/dashboard-reports/dashboard-reports.module';
 import { AssistantAlertsModule } from './modules/assistant-alerts/assistant-alerts.module';
 import { UsStockMarketInvestmentModule } from './modules/us-stock-market-investment/us-stock-market-investment.module';
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
+import { AssistantModule } from './modules/assistant/assistant.module';
 
 @Module({
   imports: [
@@ -46,6 +48,8 @@ import { UsStockMarketInvestmentModule } from './modules/us-stock-market-investm
     DashboardReportsModule,
     AssistantAlertsModule,
     UsStockMarketInvestmentModule,
+    SubscriptionsModule,
+    AssistantModule,
   ],
 })
 export class AppModule {}

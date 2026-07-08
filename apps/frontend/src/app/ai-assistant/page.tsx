@@ -1,10 +1,10 @@
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout';
-import { ComingSoon } from '@/features/dashboard/components/ComingSoon';
+import { WallterSettingsView } from '@/features/assistant/components/WallterSettingsView';
 
 export default function AiAssistantPage() {
   return (
     <DashboardLayout>
-      <ComingSoon titleKey="nav.aiAssistant" />
+      <WallterSettingsView />
     </DashboardLayout>
   );
 }

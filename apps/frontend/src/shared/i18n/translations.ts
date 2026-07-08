@@ -67,7 +67,7 @@ const es: Dictionary = {
   'nav.budgets': 'Presupuestos',
   'nav.goals': 'Metas',
   'nav.debts': 'Deudas',
-  'nav.aiAssistant': 'Asistente IA',
+  'nav.aiAssistant': 'Wallter',
   'nav.profile': 'Perfil',
   'nav.settings': 'Configuración',
 
@@ -135,7 +135,7 @@ const en: Dictionary = {
   'nav.budgets': 'Budgets',
   'nav.goals': 'Goals',
   'nav.debts': 'Debts',
-  'nav.aiAssistant': 'AI Assistant',
+  'nav.aiAssistant': 'Wallter',
   'nav.profile': 'Profile',
   'nav.settings': 'Settings',
 
