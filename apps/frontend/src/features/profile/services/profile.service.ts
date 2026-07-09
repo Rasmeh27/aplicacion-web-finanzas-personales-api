@@ -4,6 +4,9 @@ import type { AuthUser } from '@/types/auth';
 export type UpdateUserPreferencesPayload = {
   fullName?: string;
   primaryCurrency: 'DOP' | 'USD' | 'EUR';
+  country?: string | null;
+  timezone?: string | null;
+  phoneNumber?: string | null;
   monthlyIncomeEstimate?: number;
   monthlySavingTargetPct?: number;
   monthlySavingTargetAmount?: number;
@@ -16,6 +19,9 @@ export type UserProfileResponse = Partial<AuthUser> & {
   email?: string;
   fullName?: string | null;
   primaryCurrency?: string;
+  country?: string | null;
+  timezone?: string | null;
+  phoneNumber?: string | null;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -29,5 +35,9 @@ export const profileService = {
   async updatePreferences(payload: UpdateUserPreferencesPayload): Promise<UserProfileResponse> {
     const { data } = await apiClient.patch<UserProfileResponse>('/user/me/preferences', payload);
     return data;
+  },
+
+  async deleteMe(): Promise<void> {
+    await apiClient.delete('/user/me');
   },
 };

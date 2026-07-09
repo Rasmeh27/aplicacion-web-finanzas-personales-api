@@ -26,6 +26,8 @@ export type RecentTransaction = {
   merchant: string;
   category: string;
   date: string;
+  dateDetail?: string;
+  dateStatus?: 'completed' | 'scheduled';
   method: string;
   amount: number;
   type: TransactionType;

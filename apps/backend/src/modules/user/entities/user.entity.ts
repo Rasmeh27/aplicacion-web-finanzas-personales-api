@@ -15,6 +15,15 @@ export class User {
   @Column({ name: 'primary_currency', type: 'varchar', length: 3, default: 'DOP' })
   primaryCurrency: string;
 
+  @Column({ name: 'country', type: 'varchar', length: 2, nullable: true })
+  country: string | null;
+
+  @Column({ name: 'timezone', type: 'text', nullable: true })
+  timezone: string | null;
+
+  @Column({ name: 'phone_number', type: 'text', nullable: true })
+  phoneNumber: string | null;
+
   @Column({
     name: 'monthly_income_estimate',
     type: 'numeric',

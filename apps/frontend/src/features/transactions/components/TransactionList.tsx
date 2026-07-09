@@ -21,12 +21,42 @@ const CLASSIFICATION_BADGE: Record<string, string> = {
 };
 
 const formatDate = (value: string): string => {
-  const date = new Date(`${value}T00:00:00`);
+  const [datePart] = value.split('T');
+  const date = new Date(`${datePart}T00:00:00`);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat('es-DO', { day: '2-digit', month: 'short', year: 'numeric' }).format(
     date,
   );
 };
+
+const toDateString = (date: Date): string =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+function TransactionDateStatus({ transaction }: { transaction: Transaction }) {
+  const isScheduled = transaction.date > toDateString(new Date());
+  const executionDate = formatDate(transaction.date);
+  const registeredDate = formatDate(transaction.createdAt);
+
+  if (isScheduled) {
+    return (
+      <div className="space-y-1">
+        <span className="inline-flex rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700">
+          Se realizará el {executionDate}
+        </span>
+        <p className="text-xs font-medium text-slate-400">Registrada el {registeredDate}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+        Realizada
+      </span>
+      <p className="text-xs font-medium text-slate-400">{executionDate}</p>
+    </div>
+  );
+}
 
 function SignedAmount({ transaction }: { transaction: Transaction }) {
   const meta = CLASSIFICATION_META[transaction.classification];
@@ -156,7 +186,9 @@ export function TransactionList({ transactions, loading, onEdit, onView, onDelet
                       {CLASSIFICATION_META[transaction.classification]?.label}
                     </span>
                   </td>
-                  <td className="px-5 py-4 text-slate-500">{formatDate(transaction.date)}</td>
+                  <td className="px-5 py-4">
+                    <TransactionDateStatus transaction={transaction} />
+                  </td>
                   <td className="px-5 py-4 text-right">
                     <SignedAmount transaction={transaction} />
                   </td>
@@ -185,7 +217,9 @@ export function TransactionList({ transactions, loading, onEdit, onView, onDelet
                   </p>
                   <p className="mt-0.5 text-xs text-slate-500">
                     {transaction.category?.name ? `${transaction.category.name} · ` : ''}
-                    {formatDate(transaction.date)}
+                    {transaction.date > toDateString(new Date())
+                      ? `Se realizará el ${formatDate(transaction.date)}`
+                      : 'Realizada'}
                   </p>
                   <span
                     className={cn(

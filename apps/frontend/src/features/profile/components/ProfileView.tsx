@@ -40,6 +40,39 @@ const CURRENCY_LABELS: Record<CurrencyCode, string> = {
   EUR: 'EUR - Euro',
 };
 
+const COUNTRY_OPTIONS = [
+  { code: 'DO', label: 'República Dominicana' },
+  { code: 'US', label: 'Estados Unidos' },
+  { code: 'PR', label: 'Puerto Rico' },
+  { code: 'MX', label: 'México' },
+  { code: 'CO', label: 'Colombia' },
+  { code: 'ES', label: 'España' },
+] as const;
+
+const PHONE_COUNTRY_OPTIONS = [
+  { code: 'DO', dialCode: '+1', label: 'RD +1', placeholder: '809-555-1234', groups: [3, 3, 4] },
+  { code: 'US', dialCode: '+1', label: 'US +1', placeholder: '555-123-4567', groups: [3, 3, 4] },
+  { code: 'PR', dialCode: '+1', label: 'PR +1', placeholder: '787-555-1234', groups: [3, 3, 4] },
+  { code: 'MX', dialCode: '+52', label: 'MX +52', placeholder: '55-1234-5678', groups: [2, 4, 4] },
+  { code: 'CO', dialCode: '+57', label: 'CO +57', placeholder: '300-123-4567', groups: [3, 3, 4] },
+  { code: 'ES', dialCode: '+34', label: 'ES +34', placeholder: '600-123-456', groups: [3, 3, 3] },
+] as const;
+
+const TIMEZONE_OPTIONS = [
+  { value: 'America/Santo_Domingo', label: 'America/Santo_Domingo (UTC-4)' },
+  { value: 'America/New_York', label: 'America/New_York' },
+  { value: 'America/Puerto_Rico', label: 'America/Puerto_Rico' },
+  { value: 'America/Mexico_City', label: 'America/Mexico_City' },
+  { value: 'America/Bogota', label: 'America/Bogota' },
+  { value: 'Europe/Madrid', label: 'Europe/Madrid' },
+] as const;
+
+const countryLabel = (code?: string | null): string =>
+  COUNTRY_OPTIONS.find((country) => country.code === code)?.label ?? 'No configurado';
+
+const timezoneLabel = (value?: string | null): string =>
+  TIMEZONE_OPTIONS.find((timezone) => timezone.value === value)?.label ?? value ?? 'No configurado';
+
 const DEFAULT_SETTINGS: NotificationSettings = {
   emailNotifications: true,
   weeklySummary: true,
@@ -71,6 +104,63 @@ const parseMoneyInput = (value: string): number => {
   return Number.isFinite(numeric) && numeric >= 0 ? numeric : 0;
 };
 
+const digitsOnly = (value: string): string => value.replace(/\D/g, '');
+
+const phoneOptionForCountry = (country?: string | null) =>
+  PHONE_COUNTRY_OPTIONS.find((option) => option.code === country) ?? PHONE_COUNTRY_OPTIONS[0];
+
+const formatPhoneLocalInput = (value: string, country?: string | null): string => {
+  const option = phoneOptionForCountry(country);
+  const maxLength = option.groups.reduce((total, group) => total + group, 0);
+  const digits = digitsOnly(value).slice(0, maxLength);
+  const parts: string[] = [];
+  let cursor = 0;
+
+  for (const groupLength of option.groups) {
+    const part = digits.slice(cursor, cursor + groupLength);
+    if (!part) break;
+    parts.push(part);
+    cursor += groupLength;
+  }
+
+  return parts.join('-');
+};
+
+const splitPhoneNumber = (
+  value: string | null | undefined,
+  country?: string | null,
+): { countryCode: string; dialCode: string; localNumber: string } => {
+  const fallback = phoneOptionForCountry(country);
+  const sanitized = (value ?? '').replace(/[^0-9+\-()\s]/g, '').trim();
+  if (!sanitized) return { countryCode: fallback.code, dialCode: fallback.dialCode, localNumber: '' };
+
+  const compact = sanitized.replace(/[\s\-()]/g, '');
+  const matchingOptions = PHONE_COUNTRY_OPTIONS.filter((item) => compact.startsWith(item.dialCode));
+  const option = matchingOptions.find((item) => item.code === country) ?? matchingOptions[0];
+  if (!option) {
+    return {
+      countryCode: fallback.code,
+      dialCode: fallback.dialCode,
+      localNumber: formatPhoneLocalInput(sanitized, fallback.code),
+    };
+  }
+
+  const localNumber = compact.slice(option.dialCode.length).replace(/\D/g, '');
+  return { countryCode: option.code, dialCode: option.dialCode, localNumber: formatPhoneLocalInput(localNumber, option.code) };
+};
+
+const buildPhoneNumber = (dialCode: string, localNumber: string): string | null => {
+  const sanitizedLocal = localNumber.trim();
+  if (!sanitizedLocal) return null;
+  return `${dialCode} ${sanitizedLocal}`;
+};
+
+const formatPhoneForDisplay = (value: string | null | undefined, country?: string | null): string => {
+  if (!value?.trim()) return 'No configurado';
+  const phoneParts = splitPhoneNumber(value, country);
+  return phoneParts.localNumber ? `${phoneParts.dialCode} ${phoneParts.localNumber}` : 'No configurado';
+};
+
 const formatMoney = (value: number | null | undefined, currency: string): string =>
   new Intl.NumberFormat('es-DO', {
     style: 'currency',
@@ -84,6 +174,9 @@ const normalizeProfile = (current: AuthUser, profile: UserProfileResponse): Auth
   email: profile.email ?? current.email,
   fullName: profile.fullName ?? current.fullName,
   primaryCurrency: profile.primaryCurrency ?? current.primaryCurrency,
+  country: profile.country === undefined ? current.country : profile.country,
+  timezone: profile.timezone === undefined ? current.timezone : profile.timezone,
+  phoneNumber: profile.phoneNumber === undefined ? current.phoneNumber : profile.phoneNumber,
   monthlyIncomeEstimate: Number(profile.monthlyIncomeEstimate ?? current.monthlyIncomeEstimate ?? 0),
   monthlySavingTargetPct: Number(profile.monthlySavingTargetPct ?? current.monthlySavingTargetPct ?? 0),
   monthlySavingTargetAmount:
@@ -253,6 +346,11 @@ export function ProfileView() {
   const [settings, setSettings] = useState<NotificationSettings>(DEFAULT_SETTINGS);
   const [currency, setCurrency] = useState<CurrencyCode>(safeCurrency(user?.primaryCurrency));
   const [fullNameDraft, setFullNameDraft] = useState(user?.fullName?.trim() ?? '');
+  const [countryDraft, setCountryDraft] = useState(user?.country ?? 'DO');
+  const [timezoneDraft, setTimezoneDraft] = useState(user?.timezone ?? 'America/Santo_Domingo');
+  const initialPhoneDraft = splitPhoneNumber(user?.phoneNumber, user?.country);
+  const [phoneCountryDraft, setPhoneCountryDraft] = useState(initialPhoneDraft.countryCode);
+  const [phoneLocalDraft, setPhoneLocalDraft] = useState(initialPhoneDraft.localNumber);
   const [incomeDraft, setIncomeDraft] = useState(toMoneyInput(user?.monthlyIncomeEstimate));
   const [fixedDraft, setFixedDraft] = useState(toMoneyInput(user?.monthlyFixedExpenseEstimate));
   const [variableDraft, setVariableDraft] = useState(toMoneyInput(user?.monthlyVariableExpenseEstimate));
@@ -265,12 +363,14 @@ export function ProfileView() {
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [soonMessage, setSoonMessage] = useState<string | null>(null);
 
   const displayName = user?.fullName?.trim() || 'Usuario MONI';
   const displayEmail = user?.email ?? 'correo no disponible';
   const initials = useMemo(() => initialsFromName(user?.fullName, user?.email), [user?.fullName, user?.email]);
   const selectedCurrency = safeCurrency(user?.primaryCurrency);
+  const selectedPhoneOption = phoneOptionForCountry(phoneCountryDraft);
 
   useEffect(() => {
     setSettings(getStoredSettings());
@@ -287,8 +387,13 @@ export function ProfileView() {
   }, [selectedCurrency]);
 
   useEffect(() => {
+    const phoneParts = splitPhoneNumber(user?.phoneNumber, user?.country);
     setFullNameDraft(user?.fullName?.trim() ?? '');
-  }, [user?.fullName]);
+    setCountryDraft(user?.country ?? 'DO');
+    setTimezoneDraft(user?.timezone ?? 'America/Santo_Domingo');
+    setPhoneCountryDraft(phoneParts.countryCode);
+    setPhoneLocalDraft(phoneParts.localNumber);
+  }, [user?.country, user?.fullName, user?.phoneNumber, user?.timezone]);
 
   useEffect(() => {
     setIncomeDraft(toMoneyInput(user?.monthlyIncomeEstimate));
@@ -328,8 +433,13 @@ export function ProfileView() {
   };
 
   const openEditProfile = () => {
+    const phoneParts = splitPhoneNumber(user?.phoneNumber, user?.country);
     setFullNameDraft(user?.fullName?.trim() ?? '');
     setCurrency(selectedCurrency);
+    setCountryDraft(user?.country ?? 'DO');
+    setTimezoneDraft(user?.timezone ?? 'America/Santo_Domingo');
+    setPhoneCountryDraft(phoneParts.countryCode);
+    setPhoneLocalDraft(phoneParts.localNumber);
     setIncomeDraft(toMoneyInput(user?.monthlyIncomeEstimate));
     setFixedDraft(toMoneyInput(user?.monthlyFixedExpenseEstimate));
     setVariableDraft(toMoneyInput(user?.monthlyVariableExpenseEstimate));
@@ -359,6 +469,9 @@ export function ProfileView() {
       const updated = await profileService.updatePreferences({
         fullName,
         primaryCurrency: currency,
+        country: countryDraft,
+        timezone: timezoneDraft,
+        phoneNumber: buildPhoneNumber(selectedPhoneOption.dialCode, phoneLocalDraft),
         monthlyIncomeEstimate: parseMoneyInput(incomeDraft),
         monthlyFixedExpenseEstimate: parseMoneyInput(fixedDraft),
         monthlyVariableExpenseEstimate: parseMoneyInput(variableDraft),
@@ -384,6 +497,22 @@ export function ProfileView() {
     } finally {
       clearAuth();
       router.replace('/auth/login');
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeletingAccount(true);
+    setMessage(null);
+
+    try {
+      await profileService.deleteMe();
+      clearAuth();
+      router.replace('/auth/login');
+    } catch {
+      setMessage('No se pudo eliminar la cuenta. Inténtalo nuevamente.');
+      setDeleteOpen(false);
+    } finally {
+      setDeletingAccount(false);
     }
   };
 
@@ -459,14 +588,18 @@ export function ProfileView() {
           <dl>
             <InfoRow label="Nombre completo" value={displayName} />
             <InfoRow label="Correo electrónico" value={displayEmail} />
-            <InfoRow label="Teléfono" value="No configurado" muted />
+            <InfoRow
+              label="Teléfono"
+              value={formatPhoneForDisplay(user?.phoneNumber, user?.country)}
+              muted={!user?.phoneNumber}
+            />
             <InfoRow label="Moneda" value={CURRENCY_LABELS[selectedCurrency]} />
             <InfoRow label="Ingreso mensual estimado" value={formatMoney(user?.monthlyIncomeEstimate, selectedCurrency)} />
             <InfoRow label="Gastos fijos estimados" value={formatMoney(user?.monthlyFixedExpenseEstimate, selectedCurrency)} />
             <InfoRow label="Gastos variables estimados" value={formatMoney(user?.monthlyVariableExpenseEstimate, selectedCurrency)} />
             <InfoRow label="Meta de ahorro" value={`${formatMoney(user?.monthlySavingTargetAmount, selectedCurrency)} · ${Number(user?.monthlySavingTargetPct ?? 0)}%`} />
-            <InfoRow label="País" value="República Dominicana" />
-            <InfoRow label="Zona horaria" value="UTC-4 (AST)" />
+            <InfoRow label="País" value={countryLabel(user?.country)} muted={!user?.country} />
+            <InfoRow label="Zona horaria" value={timezoneLabel(user?.timezone)} muted={!user?.timezone} />
           </dl>
         </SectionCard>
 
@@ -597,6 +730,76 @@ export function ProfileView() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
+            <label htmlFor="profileCountry" className="block text-sm font-bold text-slate-950">
+              País
+            </label>
+            <select
+              id="profileCountry"
+              value={countryDraft}
+              onChange={(event) => setCountryDraft(event.target.value)}
+              className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-950 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+            >
+              {COUNTRY_OPTIONS.map((country) => (
+                <option key={country.code} value={country.code}>
+                  {country.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="profileTimezone" className="block text-sm font-bold text-slate-950">
+              Zona horaria
+            </label>
+            <select
+              id="profileTimezone"
+              value={timezoneDraft}
+              onChange={(event) => setTimezoneDraft(event.target.value)}
+              className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-950 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+            >
+              {TIMEZONE_OPTIONS.map((timezone) => (
+                <option key={timezone.value} value={timezone.value}>
+                  {timezone.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <label htmlFor="profilePhone" className="block text-sm font-bold text-slate-950">
+          Número de teléfono
+        </label>
+        <div className="mt-2 grid grid-cols-[minmax(7.5rem,9rem)_1fr] gap-2">
+          <select
+            aria-label="Código telefónico"
+            value={phoneCountryDraft}
+            onChange={(event) => {
+              const nextCountry = event.target.value;
+              setPhoneCountryDraft(nextCountry);
+              setPhoneLocalDraft((current) => formatPhoneLocalInput(current, nextCountry));
+            }}
+            className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-950 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+          >
+            {PHONE_COUNTRY_OPTIONS.map((option) => (
+              <option key={option.code} value={option.code}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <input
+            id="profilePhone"
+            type="tel"
+            inputMode="numeric"
+            pattern="[0-9\-]*"
+            value={phoneLocalDraft}
+            onChange={(event) => setPhoneLocalDraft(formatPhoneLocalInput(event.target.value, phoneCountryDraft))}
+            placeholder={selectedPhoneOption.placeholder}
+            className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+          />
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
             <label htmlFor="profileIncome" className="block text-sm font-bold text-slate-950">
               Ingreso mensual estimado
             </label>
@@ -693,10 +896,11 @@ export function ProfileView() {
       <ConfirmDialog
         open={deleteOpen}
         title="Eliminar cuenta"
-        message="El backend todavía no expone un endpoint para eliminar la cuenta. No se realizará ningún cambio permanente."
-        confirmLabel="Entendido"
+        message="Se eliminarán tu perfil y los datos financieros guardados en MONI. Esta acción no se puede deshacer."
+        confirmLabel="Eliminar cuenta"
         cancelLabel="Cancelar"
-        onConfirm={() => setDeleteOpen(false)}
+        loading={deletingAccount}
+        onConfirm={() => void handleDeleteAccount()}
         onClose={() => setDeleteOpen(false)}
       />
     </>

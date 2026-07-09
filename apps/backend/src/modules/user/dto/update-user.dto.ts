@@ -32,6 +32,26 @@ export class UpdateUserPreferencesDto {
   @Matches(/^[A-Z]{3}$/)
   currency?: string;
 
+  @ApiPropertyOptional({ example: 'DO', description: 'País del usuario en formato ISO 3166-1 alpha-2.' })
+  @IsOptional()
+  @IsString()
+  @Length(2, 2)
+  @Matches(/^[A-Z]{2}$/)
+  country?: string;
+
+  @ApiPropertyOptional({ example: 'America/Santo_Domingo', description: 'Zona horaria IANA del usuario.' })
+  @IsOptional()
+  @IsString()
+  @Length(3, 80)
+  timezone?: string;
+
+  @ApiPropertyOptional({ example: '+18095551234', description: 'Número de teléfono del usuario.' })
+  @IsOptional()
+  @IsString()
+  @Length(7, 30)
+  @Matches(/^[0-9+\-()\s]+$/)
+  phoneNumber?: string | null;
+
   @ApiPropertyOptional({ example: 45000, description: 'Ingreso mensual estimado.' })
   @IsOptional()
   @Type(() => Number)

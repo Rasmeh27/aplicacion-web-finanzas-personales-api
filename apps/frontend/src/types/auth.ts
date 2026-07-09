@@ -3,6 +3,9 @@ export type AuthUser = {
   email: string;
   fullName: string | null;
   primaryCurrency: string;
+  country?: string | null;
+  timezone?: string | null;
+  phoneNumber?: string | null;
   monthlyIncomeEstimate: number;
   monthlySavingTargetPct: number;
   monthlySavingTargetAmount: number | null;

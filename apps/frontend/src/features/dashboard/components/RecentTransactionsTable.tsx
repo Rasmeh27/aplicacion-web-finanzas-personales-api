@@ -9,6 +9,11 @@ const typeBadgeStyles: Record<TransactionType, string> = {
   Ingreso: 'bg-emerald-50 text-emerald-700',
 };
 
+const dateStatusStyles = {
+  completed: 'bg-emerald-50 text-emerald-700',
+  scheduled: 'bg-indigo-50 text-indigo-700',
+} as const;
+
 function Badge({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <span
@@ -76,7 +81,18 @@ export function RecentTransactionsTable({
                     <td className="px-6 py-4">
                       <Badge className="bg-slate-100 text-slate-700">{tx.category}</Badge>
                     </td>
-                    <td className="px-6 py-4 text-slate-500">{tx.date}</td>
+                    <td className="px-6 py-4">
+                      {tx.dateStatus ? (
+                        <div className="space-y-1">
+                          <Badge className={dateStatusStyles[tx.dateStatus]}>{tx.date}</Badge>
+                          {tx.dateDetail ? (
+                            <p className="text-xs font-medium text-slate-400">{tx.dateDetail}</p>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <span className="text-slate-500">{tx.date}</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4">
                       <Badge className="bg-violet-50 text-violet-700">{tx.method}</Badge>
                     </td>

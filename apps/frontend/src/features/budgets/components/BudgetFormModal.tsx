@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
@@ -24,6 +24,7 @@ type Props = {
 };
 
 const CURRENCIES = ['DOP', 'USD', 'EUR'] as const;
+const REPEAT_MONTH_PRESETS = [1, 3, 6, 12, 24, 36] as const;
 
 const normalizeCurrency = (currency: string): (typeof CURRENCIES)[number] =>
   (CURRENCIES as readonly string[]).includes(currency)
@@ -52,6 +53,8 @@ export function BudgetFormModal({
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<BudgetFormValues>({
     resolver: zodResolver(budgetSchema),
@@ -65,6 +68,12 @@ export function BudgetFormModal({
       repeatMonths: 1,
     } as unknown as BudgetFormValues,
   });
+  const [repeatMode, setRepeatMode] = useState<'preset' | 'custom'>('preset');
+  const repeatMonths = Number(watch('repeatMonths') ?? 1);
+  const repeatSelectValue =
+    repeatMode === 'custom' || !REPEAT_MONTH_PRESETS.includes(repeatMonths as (typeof REPEAT_MONTH_PRESETS)[number])
+      ? 'custom'
+      : String(repeatMonths);
 
   const getCreateValues = useCallback(
     (): BudgetFormValues =>
@@ -82,6 +91,7 @@ export function BudgetFormModal({
 
   useEffect(() => {
     if (open && isEdit && budget) {
+      setRepeatMode('preset');
       reset({
         categoryId: budget.categoryId ?? '',
         month: budget.month,
@@ -92,9 +102,27 @@ export function BudgetFormModal({
         repeatMonths: 1,
       } as unknown as BudgetFormValues);
     } else {
+      setRepeatMode('preset');
       reset(getCreateValues());
     }
   }, [open, isEdit, budget, getCreateValues, reset]);
+
+  const updateRepeatMode = (value: string) => {
+    if (value === 'custom') {
+      setRepeatMode('custom');
+      setValue('repeatMonths', repeatMonths > 1 ? repeatMonths : 2, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      return;
+    }
+
+    setRepeatMode('preset');
+    setValue('repeatMonths', Number(value), {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
 
   const submit = handleSubmit(async (values) => {
     await onSubmit(values);
@@ -238,17 +266,40 @@ export function BudgetFormModal({
 
         {!isEdit ? (
           <div>
-            <label htmlFor="budget-repeat-months" className="mb-1.5 block text-sm font-semibold text-slate-800">
+            <label htmlFor="budget-repeat-preset" className="mb-1.5 block text-sm font-semibold text-slate-800">
               Repetir presupuesto
             </label>
-            <select id="budget-repeat-months" className={inputClass} {...register('repeatMonths')}>
+            <select
+              id="budget-repeat-preset"
+              className={inputClass}
+              value={repeatSelectValue}
+              onChange={(event) => updateRepeatMode(event.target.value)}
+            >
               <option value={1}>Solo este mes</option>
               <option value={3}>3 meses consecutivos</option>
               <option value={6}>6 meses consecutivos</option>
               <option value={12}>12 meses consecutivos</option>
               <option value={24}>24 meses consecutivos</option>
               <option value={36}>36 meses consecutivos</option>
+              <option value="custom">Personalizado...</option>
             </select>
+            {repeatSelectValue === 'custom' ? (
+              <div className="mt-3">
+                <label htmlFor="budget-repeat-months" className="mb-1.5 block text-xs font-semibold text-slate-500">
+                  Cantidad de meses
+                </label>
+                <input
+                  id="budget-repeat-months"
+                  type="number"
+                  min="1"
+                  max="36"
+                  step="1"
+                  placeholder="Ej. 8"
+                  className={inputClass}
+                  {...register('repeatMonths')}
+                />
+              </div>
+            ) : null}
             {errors.repeatMonths ? (
               <p className="mt-1 text-xs font-medium text-rose-600">{errors.repeatMonths.message}</p>
             ) : (

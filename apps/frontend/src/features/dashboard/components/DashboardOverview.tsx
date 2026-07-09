@@ -80,13 +80,39 @@ const getPeriodRange = (period: DashboardPeriod): { startDate: string; endDate: 
 };
 
 const formatTxDate = (value: string): string => {
-  const date = new Date(`${value}T00:00:00`);
+  const [datePart] = value.split('T');
+  const date = new Date(`${datePart}T00:00:00`);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat('es-DO', { day: '2-digit', month: 'short', year: 'numeric' }).format(date);
 };
 
+const todayDateString = (): string => toDateString(new Date());
+
+const getTransactionDateState = (transaction: Transaction) => {
+  const isScheduled = transaction.date > todayDateString();
+  const executionDate = formatTxDate(transaction.date);
+  const registeredDate = formatTxDate(transaction.createdAt);
+
+  if (isScheduled) {
+    return {
+      date: `Se realizará el ${executionDate}`,
+      dateDetail: `Registrada el ${registeredDate}`,
+      dateStatus: 'scheduled' as const,
+      method: 'Programada',
+    };
+  }
+
+  return {
+    date: 'Realizada',
+    dateDetail: executionDate,
+    dateStatus: 'completed' as const,
+    method: 'Registrado',
+  };
+};
+
 const toRecentTransaction = (transaction: Transaction): RecentTransaction => {
   const meta = CLASSIFICATION_META[transaction.classification];
+  const dateState = getTransactionDateState(transaction);
   const type =
     transaction.classification === 'regular_income' || transaction.classification === 'extra_income'
       ? 'Ingreso'
@@ -98,8 +124,10 @@ const toRecentTransaction = (transaction: Transaction): RecentTransaction => {
     id: transaction.id,
     merchant: transaction.description || meta.label,
     category: transaction.category?.name ?? meta.label,
-    date: formatTxDate(transaction.date),
-    method: 'Registrado',
+    date: dateState.date,
+    dateDetail: dateState.dateDetail,
+    dateStatus: dateState.dateStatus,
+    method: dateState.method,
     amount: Number(transaction.amount),
     type,
   };
@@ -164,6 +192,7 @@ export function DashboardOverview() {
   const currency = user?.primaryCurrency ?? 'DOP';
   const [activePeriod, setActivePeriod] = useState<DashboardPeriod>('month');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [registeredTransactions, setRegisteredTransactions] = useState<Transaction[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
 
   const loadTransactions = useCallback(async () => {
@@ -183,8 +212,11 @@ export function DashboardOverview() {
       }
 
       setTransactions(allItems);
+      const registeredResponse = await transactionService.list({ limit: pageSize, offset: 0 });
+      setRegisteredTransactions(registeredResponse.items);
     } catch {
       setTransactions([]);
+      setRegisteredTransactions([]);
     } finally {
       setTransactionsLoading(false);
     }
@@ -201,7 +233,16 @@ export function DashboardOverview() {
 
   const chartData = realDashboard.chartData;
   const categoryData = realDashboard.categoryData;
-  const recentTransactions = transactions.slice(0, 6).map(toRecentTransaction);
+  const recentTransactions = useMemo(() => {
+    return [...registeredTransactions]
+      .sort((a, b) => {
+        const createdDiff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        if (createdDiff !== 0) return createdDiff;
+        return b.date.localeCompare(a.date);
+      })
+      .slice(0, 6)
+      .map(toRecentTransaction);
+  }, [registeredTransactions]);
   const topCategoryLabel = realDashboard.topCategoryLabel;
 
   return (
@@ -292,10 +333,10 @@ export function DashboardOverview() {
         <RecentTransactionsTable
           transactions={recentTransactions}
           currency={currency}
-          title={`${t('recent.title')} · ${PERIOD_CAPTION[activePeriod]}`}
+          title="Movimientos registrados recientemente"
           seeAllLabel={t('recent.seeAll')}
-          emptyTitle={`No hay movimientos para ${PERIOD_CAPTION[activePeriod].toLowerCase()}.`}
-          emptySubtitle="Cuando registres ingresos o gastos reales para este período aparecerán aquí."
+          emptyTitle="Aún no hay movimientos registrados."
+          emptySubtitle="Cuando registres ingresos o gastos reales aparecerán aquí."
         />
       </div>
     </>

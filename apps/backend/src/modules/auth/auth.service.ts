@@ -29,6 +29,9 @@ type AuthUserResponse = {
   email: string | undefined;
   fullName: string;
   primaryCurrency: string;
+  country: string | null;
+  timezone: string | null;
+  phoneNumber: string | null;
   monthlyIncomeEstimate: number;
   monthlySavingTargetPct: number;
   monthlySavingTargetAmount: number | null;
@@ -218,6 +221,9 @@ export class AuthService {
       email: user.email,
       fullName: profile.fullName,
       primaryCurrency: profile.primaryCurrency,
+      country: profile.country ?? null,
+      timezone: profile.timezone ?? null,
+      phoneNumber: profile.phoneNumber ?? null,
       monthlyIncomeEstimate: Number(profile.monthlyIncomeEstimate),
       monthlySavingTargetPct: Number(profile.monthlySavingTargetPct),
       monthlySavingTargetAmount:

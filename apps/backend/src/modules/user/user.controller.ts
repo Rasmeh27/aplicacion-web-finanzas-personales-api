@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Patch, Request, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UpdateUserPreferencesDto } from './dto/update-user.dto';
@@ -19,5 +19,10 @@ export class UserController {
   @Patch('me/preferences')
   updatePreferences(@Request() req: any, @Body() dto: UpdateUserPreferencesDto) {
     return this.service.updatePreferences(req.user.id, dto);
+  }
+
+  @Delete('me')
+  removeMe(@Request() req: any) {
+    return this.service.removeAccount(req.user.id);
   }
 }
