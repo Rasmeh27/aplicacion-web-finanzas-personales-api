@@ -16,13 +16,19 @@
     "seed": "ts-node src/database/seeds/index.ts"
   },
   "jest": {
-    "moduleFileExtensions": ["js", "json", "ts"],
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
-    "collectCoverageFrom": ["**/*.(t|j)s"],
+    "collectCoverageFrom": [
+      "**/*.(t|j)s"
+    ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
   },
@@ -53,7 +59,8 @@
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.0",
     "typeorm": "^0.3.0",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.0",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
@@ -64,6 +71,7 @@
     "@types/node": "^20.0.0",
     "@types/passport-jwt": "^3.0.0",
     "@types/passport-local": "^1.0.35",
+    "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
     "eslint": "^8.57.0",

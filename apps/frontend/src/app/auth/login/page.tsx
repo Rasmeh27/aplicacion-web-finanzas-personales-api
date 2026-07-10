@@ -156,7 +156,7 @@ export default function LoginPage() {
               />
               Recordar usuario
             </label>
-            <Link href="/forgot-password" className="text-sm font-bold text-blue-600 transition hover:text-blue-700">
+            <Link href="/auth/forgot-password" className="text-sm font-bold text-blue-600 transition hover:text-blue-700">
               ¿Olvidaste tu contraseña?
             </Link>
           </div>

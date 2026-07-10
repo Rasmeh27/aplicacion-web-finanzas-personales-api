@@ -5,6 +5,7 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
@@ -158,12 +159,36 @@ export class AuthService {
   }
 
   async forgotPassword(email: string) {
-    await this.supabase.client.auth.resetPasswordForEmail(this.normalizeEmail(email));
+    const { error } = await this.supabase.client.auth.resetPasswordForEmail(
+      this.normalizeEmail(email),
+      { redirectTo: this.buildPasswordRecoveryRedirectUrl() },
+    );
+
+    // Keep the public response neutral so account existence is never disclosed.
+    if (error && this.isRateLimitError(error)) {
+      throw new HttpException('Too many password recovery attempts', HttpStatus.TOO_MANY_REQUESTS);
+    }
     return { message: 'If that email exists, a reset link was sent.' };
   }
 
-  async resetPassword(_dto: ResetPasswordDto) {
-    // TODO: validate reset token & update password
+  async resetPassword(dto: ResetPasswordDto) {
+    if (!this.supabase.adminClient) {
+      throw new ServiceUnavailableException('Password recovery is not configured');
+    }
+
+    const { data, error } = await this.supabase.client.auth.getUser(dto.token);
+    if (error || !data.user) {
+      throw new BadRequestException('Invalid or expired password recovery token');
+    }
+
+    const { error: updateError } = await this.supabase.adminClient.auth.admin.updateUserById(
+      data.user.id,
+      { password: dto.password },
+    );
+    if (updateError) {
+      throw new BadRequestException('Unable to update password');
+    }
+
     return { message: 'Password updated successfully.' };
   }
 
@@ -179,6 +204,11 @@ export class AuthService {
   private buildEmailConfirmationRedirectUrl(): string {
     const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3000';
     return `${frontendUrl.replace(/\/$/, '')}/auth/email-confirmed`;
+  }
+
+  private buildPasswordRecoveryRedirectUrl(): string {
+    const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3000';
+    return `${frontendUrl.replace(/\/$/, '')}/auth/reset-password`;
   }
 
   private isEmailNotConfirmedError(error: { code?: string; message?: string }): boolean {

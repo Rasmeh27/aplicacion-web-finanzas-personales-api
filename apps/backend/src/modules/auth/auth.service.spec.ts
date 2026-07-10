@@ -47,6 +47,14 @@ describe('AuthService', () => {
           signInWithPassword: jest.fn(),
           refreshSession: jest.fn(),
           resetPasswordForEmail: jest.fn(),
+          getUser: jest.fn(),
+        },
+      },
+      adminClient: {
+        auth: {
+          admin: {
+            updateUserById: jest.fn(),
+          },
         },
       },
     } as unknown as jest.Mocked<SupabaseService>;
@@ -231,7 +239,44 @@ describe('AuthService', () => {
 
       await service.forgotPassword(' Ana@Example.COM ');
 
-      expect(supabase.client.auth.resetPasswordForEmail).toHaveBeenCalledWith('ana@example.com');
+      expect(supabase.client.auth.resetPasswordForEmail).toHaveBeenCalledWith(
+        'ana@example.com',
+        { redirectTo: 'http://localhost:3000/auth/reset-password' },
+      );
+    });
+  });
+
+  describe('resetPassword', () => {
+    it('validates the recovery token and updates the matching user', async () => {
+      (supabase.client.auth.getUser as jest.Mock).mockResolvedValue({
+        data: { user: supabaseUser },
+        error: null,
+      });
+      (supabase.adminClient!.auth.admin.updateUserById as jest.Mock).mockResolvedValue({
+        data: { user: supabaseUser },
+        error: null,
+      });
+
+      await expect(
+        service.resetPassword({ token: 'recovery-token', password: 'N3wStr0ngP@ssword' }),
+      ).resolves.toEqual({ message: 'Password updated successfully.' });
+
+      expect(supabase.client.auth.getUser).toHaveBeenCalledWith('recovery-token');
+      expect(supabase.adminClient!.auth.admin.updateUserById).toHaveBeenCalledWith(
+        'user-1',
+        { password: 'N3wStr0ngP@ssword' },
+      );
+    });
+
+    it('rejects an invalid or expired recovery token', async () => {
+      (supabase.client.auth.getUser as jest.Mock).mockResolvedValue({
+        data: { user: null },
+        error: new Error('invalid token'),
+      });
+
+      await expect(
+        service.resetPassword({ token: 'expired-token', password: 'N3wStr0ngP@ssword' }),
+      ).rejects.toThrow('Invalid or expired password recovery token');
     });
   });
 
