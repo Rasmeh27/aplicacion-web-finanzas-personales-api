@@ -20,6 +20,7 @@ import {
 import { authService } from '@/features/auth/services/auth.service';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { Modal } from '@/shared/components/Modal';
+import { PageHeader } from '@/shared/components/PageHeader';
 import { cn } from '@/shared/utils/cn';
 import { useAuthStore } from '@/store/slices/auth.store';
 import type { AuthUser } from '@/types/auth';
@@ -304,6 +305,7 @@ function ActionRow({
   description,
   actionLabel,
   actionClassName,
+  disabled = false,
   onClick,
 }: {
   icon: LucideIcon;
@@ -312,6 +314,7 @@ function ActionRow({
   description: string;
   actionLabel: string;
   actionClassName: string;
+  disabled?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -325,8 +328,9 @@ function ActionRow({
       </div>
       <button
         type="button"
+        disabled={disabled}
         onClick={onClick}
-        className={cn('text-sm font-black transition hover:opacity-75', actionClassName)}
+        className={cn('text-sm font-black transition hover:opacity-75 disabled:cursor-not-allowed disabled:opacity-60', actionClassName)}
       >
         {actionLabel}
       </button>
@@ -364,7 +368,10 @@ export function ProfileView() {
   const [loggingOut, setLoggingOut] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
-  const [soonMessage, setSoonMessage] = useState<string | null>(null);
+  const [passwordResetOpen, setPasswordResetOpen] = useState(false);
+  const [sendingPasswordReset, setSendingPasswordReset] = useState(false);
+  const [passwordResetSent, setPasswordResetSent] = useState(false);
+  const [passwordResetError, setPasswordResetError] = useState<string | null>(null);
 
   const displayName = user?.fullName?.trim() || 'Usuario MONI';
   const displayEmail = user?.email ?? 'correo no disponible';
@@ -516,19 +523,32 @@ export function ProfileView() {
     }
   };
 
+  const handlePasswordReset = async () => {
+    if (!user?.email || sendingPasswordReset) return;
+
+    setSendingPasswordReset(true);
+    setPasswordResetError(null);
+    setPasswordResetSent(false);
+    setMessage(null);
+
+    try {
+      await authService.forgotPassword(user.email);
+      setPasswordResetSent(true);
+      setMessage(`Te enviamos un enlace para cambiar la contraseña a ${user.email}.`);
+    } catch {
+      setPasswordResetError('No se pudo enviar el enlace de cambio de contraseña. Inténtalo nuevamente.');
+    } finally {
+      setSendingPasswordReset(false);
+    }
+  };
+
   return (
     <>
       <div className="mx-auto max-w-3xl space-y-6">
-        <header>
-          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.24em] text-indigo-600">
-            <User className="h-4 w-4" />
-            Cuenta personal
-          </div>
-          <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Perfil</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Administra tu información personal y las preferencias de tu cuenta.
-          </p>
-        </header>
+        <PageHeader
+          title="Perfil"
+          description="Administra tu información personal y las preferencias de tu cuenta."
+        />
 
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-950/5 sm:p-6">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
@@ -636,9 +656,14 @@ export function ProfileView() {
             iconClassName="bg-blue-50 text-blue-600"
             title="Contraseña"
             description="Última actualización no disponible"
-            actionLabel="Cambiar"
+            actionLabel={sendingPasswordReset ? 'Enviando...' : 'Cambiar'}
             actionClassName="text-indigo-600"
-            onClick={() => setSoonMessage('El cambio de contraseña estará disponible cuando se conecte el flujo de recuperación.')}
+            disabled={sendingPasswordReset}
+            onClick={() => {
+              setPasswordResetSent(false);
+              setPasswordResetError(null);
+              setPasswordResetOpen(true);
+            }}
           />
           <PreferenceRow
             icon={Shield}
@@ -878,8 +903,59 @@ export function ProfileView() {
         </div>
       </Modal>
 
-      <Modal open={Boolean(soonMessage)} title="Función pendiente" onClose={() => setSoonMessage(null)}>
-        <p className="text-sm leading-6 text-slate-600">{soonMessage}</p>
+      <Modal
+        open={passwordResetOpen}
+        title="Cambiar contraseña"
+        description="Te enviaremos un enlace seguro al correo de tu cuenta."
+        onClose={() => {
+          if (sendingPasswordReset) return;
+          setPasswordResetOpen(false);
+        }}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setPasswordResetOpen(false)}
+              disabled={sendingPasswordReset}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60"
+            >
+              Cerrar
+            </button>
+            <button
+              type="button"
+              onClick={() => void handlePasswordReset()}
+              disabled={sendingPasswordReset || passwordResetSent}
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-black text-white shadow-sm shadow-indigo-600/25 transition hover:bg-indigo-700 disabled:opacity-60"
+            >
+              {sendingPasswordReset ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+              {passwordResetSent ? 'Enlace enviado' : 'Enviar enlace'}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Correo de recuperación</p>
+            <p className="mt-1 text-sm font-bold text-slate-950">{displayEmail}</p>
+          </div>
+
+          {passwordResetSent ? (
+            <div className="flex items-start gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+              Revisa tu correo y sigue el enlace para crear una nueva contraseña.
+            </div>
+          ) : (
+            <p className="text-sm leading-6 text-slate-500">
+              Al continuar, MONI enviará un enlace de recuperación. Por seguridad, el cambio se completa desde tu correo.
+            </p>
+          )}
+
+          {passwordResetError ? (
+            <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+              {passwordResetError}
+            </div>
+          ) : null}
+        </div>
       </Modal>
 
       <ConfirmDialog

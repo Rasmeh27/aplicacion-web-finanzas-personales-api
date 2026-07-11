@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, Plus } from 'lucide-react';
 import { useAuthStore } from '@/store/slices/auth.store';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+import { PageHeader } from '@/shared/components/PageHeader';
 import {
   categoryService,
   type Category,
@@ -190,26 +191,38 @@ export function TransactionsView() {
     }
   };
 
+  const handleCreateCategory = async (payload: {
+    name: string;
+    type: Category['type'];
+    classification: Category['classification'];
+  }) => {
+    const category = await categoryService.create({
+      name: payload.name,
+      type: payload.type,
+      classification: payload.classification ?? undefined,
+      icon: 'Tag',
+      color: '#6366f1',
+    });
+    setCategories((current) => [...current, category].sort((a, b) => a.name.localeCompare(b.name)));
+    return category;
+  };
+
   return (
     <>
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
-            Transacciones
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Registra y organiza tus ingresos y gastos personales para entender a dónde va tu dinero.
-          </p>
-        </div>
+      <PageHeader
+        title="Transacciones"
+        description="Registra y organiza tus ingresos y gastos personales para entender a dónde va tu dinero."
+        action={
         <button
           type="button"
           onClick={openCreate}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-sm shadow-indigo-600/25 transition hover:bg-indigo-700"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-indigo-600/25 transition hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-600/25 sm:w-auto"
         >
           <Plus className="h-4 w-4" />
           Nueva transacción
         </button>
-      </header>
+        }
+      />
 
       <div className="mt-6">
         <TransactionSummaryCards summary={summary} currency={currency} loading={summaryLoading} />
@@ -281,6 +294,7 @@ export function TransactionsView() {
         serverError={formError}
         onClose={() => setModalOpen(false)}
         onSubmit={handleSubmit}
+        onCreateCategory={handleCreateCategory}
       />
 
       <ConfirmDialog
@@ -288,7 +302,7 @@ export function TransactionsView() {
         title="Eliminar transacción"
         message={`¿Seguro que deseas eliminar esta transacción${
           deleteTarget?.description ? ` "${deleteTarget.description}"` : ''
-        }? Esta acción no se puede deshacer.`}
+        }? Se ocultará del listado, pero quedará guardada para trazabilidad.`}
         loading={deleting}
         onConfirm={confirmDelete}
         onClose={() => setDeleteTarget(null)}

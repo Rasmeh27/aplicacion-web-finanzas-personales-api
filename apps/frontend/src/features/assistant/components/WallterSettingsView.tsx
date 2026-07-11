@@ -1,6 +1,7 @@
 'use client';
 
 import { Bot, Info, MessageCircle, ShieldCheck, Sparkles } from 'lucide-react';
+import { PageHeader } from '@/shared/components/PageHeader';
 import { useWallterStore } from '@/store/slices/wallter.store';
 
 /**
@@ -14,27 +15,27 @@ export function WallterSettingsView() {
 
   return (
     <div>
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
-            <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-indigo-600 text-white">
+      <PageHeader
+        title={
+          <span className="flex items-center gap-2">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/20">
               <Bot className="h-5 w-5" />
             </span>
             Wallter
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Configura cómo quieres usar tu asistente financiero.
-          </p>
-        </div>
+          </span>
+        }
+        description="Configura cómo quieres usar tu asistente financiero."
+        action={
         <button
           type="button"
           onClick={openChat}
-          className="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-indigo-600/25 transition hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-600/25 sm:w-auto"
         >
           <MessageCircle className="h-4 w-4" />
           Abrir chat con Wallter
         </button>
-      </header>
+        }
+      />
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">

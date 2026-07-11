@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Plus } from 'lucide-react';
 import { Modal } from '@/shared/components/Modal';
 import type { Category } from '@/features/categories/services/category.service';
 import {
@@ -29,6 +29,11 @@ type Props = {
   serverError?: string | null;
   onClose: () => void;
   onSubmit: (payload: CreateTransactionPayload) => Promise<void>;
+  onCreateCategory?: (payload: {
+    name: string;
+    type: 'income' | 'expense';
+    classification: TransactionClassification;
+  }) => Promise<Category>;
 };
 
 const CURRENCIES = ['DOP', 'USD', 'EUR'] as const;
@@ -60,7 +65,11 @@ export function TransactionFormModal({
   serverError,
   onClose,
   onSubmit,
+  onCreateCategory,
 }: Props) {
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [categoryError, setCategoryError] = useState<string | null>(null);
+  const [creatingCategory, setCreatingCategory] = useState(false);
   const {
     register,
     handleSubmit,
@@ -123,6 +132,33 @@ export function TransactionFormModal({
       ),
     [categories, classification, selectedType],
   );
+
+  const createCategory = async () => {
+    if (!classification || !selectedType || !onCreateCategory) return;
+    const name = newCategoryName.trim();
+    if (name.length < 2) {
+      setCategoryError('Escribe un nombre de al menos 2 caracteres.');
+      return;
+    }
+
+    setCreatingCategory(true);
+    setCategoryError(null);
+    try {
+      const category = await onCreateCategory({
+        name,
+        type: selectedType,
+        classification,
+      });
+      setValue('categoryId', category.id);
+      setNewCategoryName('');
+    } catch (error) {
+      const maybe = error as { response?: { data?: { message?: string | string[] } } };
+      const message = maybe.response?.data?.message;
+      setCategoryError(Array.isArray(message) ? message[0] : message ?? 'No se pudo crear la categoría.');
+    } finally {
+      setCreatingCategory(false);
+    }
+  };
 
   useEffect(() => {
     if (mode === 'edit' || !classification || !['regular_income', 'extra_income'].includes(classification)) {
@@ -269,6 +305,34 @@ export function TransactionFormModal({
             ) : null}
           </div>
         </div>
+
+        {onCreateCategory ? (
+          <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-3">
+            <p className="text-xs font-bold text-indigo-700">Crear categoría personalizada</p>
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+              <input
+                type="text"
+                value={newCategoryName}
+                onChange={(event) => setNewCategoryName(event.target.value)}
+                placeholder="Ej. Mascotas, delivery, inversiones..."
+                className="h-11 min-w-0 flex-1 rounded-xl border border-indigo-100 bg-white px-3 text-sm font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+              />
+              <button
+                type="button"
+                onClick={() => void createCategory()}
+                disabled={creatingCategory || !classification}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-black text-white transition hover:bg-indigo-700 disabled:opacity-60"
+              >
+                {creatingCategory ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                Crear
+              </button>
+            </div>
+            <p className="mt-2 text-xs font-semibold text-indigo-600">
+              Se creará para la clasificación seleccionada arriba.
+            </p>
+            {categoryError ? <p className="mt-2 text-xs font-bold text-rose-600">{categoryError}</p> : null}
+          </div>
+        ) : null}
 
         <div>
           <label htmlFor="description" className="mb-1.5 block text-sm font-semibold text-slate-800">

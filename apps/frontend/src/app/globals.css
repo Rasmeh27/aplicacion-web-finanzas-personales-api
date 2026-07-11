@@ -5,3 +5,14 @@
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
+
+.forgot-password-panel {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .forgot-password-panel {
+    display: flex;
+    flex-direction: column;
+  }
+}

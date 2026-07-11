@@ -7,7 +7,10 @@ import {
 } from '../../movements/entities/transaction.entity';
 import { Debt, DebtStatus } from '../../planning/entities/debt.entity';
 import { DebtPayment } from '../../planning/entities/debt-payment.entity';
-import { FinancialGoal } from '../../planning/entities/financial-goal.entity';
+import {
+  FinancialGoal,
+  FinancialGoalStatus,
+} from '../../planning/entities/financial-goal.entity';
 
 export type FinancialHealthStatus = 'excellent' | 'stable' | 'attention' | 'critical';
 
@@ -99,14 +102,17 @@ export class CalculateFinancialHealthUseCase {
           ? null
           : 0;
 
-    const goalsProgressPercentage = this.calculateGoalsProgress(goals);
+    const relevantGoals = goals.filter(
+      (goal) => goal.status !== FinancialGoalStatus.CANCELLED,
+    );
+    const goalsProgressPercentage = this.calculateGoalsProgress(relevantGoals);
     const financialHealthScore = this.calculateScore({
       savingsPercentage,
       debtIncomeRatio,
       totalIncome,
       monthlyBalance,
       goalsProgressPercentage,
-      hasGoals: goals.length > 0,
+      hasGoals: relevantGoals.length > 0,
     });
 
     return {
@@ -127,7 +133,7 @@ export class CalculateFinancialHealthUseCase {
         totalIncome,
         totalDebtRemaining,
         goalsProgressPercentage,
-        hasGoals: goals.length > 0,
+        hasGoals: relevantGoals.length > 0,
       }),
       currency: 'DOP',
     };

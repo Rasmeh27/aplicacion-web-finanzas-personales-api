@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Tag, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
+import { PiggyBank, Plus, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import { useAuthStore } from '@/store/slices/auth.store';
+import { PageHeader } from '@/shared/components/PageHeader';
 import { formatCurrency } from '@/shared/utils/format-currency';
 import { useTranslation } from '@/shared/i18n/useTranslation';
 import type { TranslationKey } from '@/shared/i18n/translations';
@@ -58,6 +59,7 @@ type DashboardSummaryView = {
   balanceAvailable: number;
   monthlyIncome: number;
   monthlyExpenses: number;
+  savingsRate: number;
 };
 
 const toDateString = (date: Date): string =>
@@ -154,17 +156,15 @@ const buildRealDashboard = (transactions: Transaction[]) => {
       expensesByCategory.set(categoryName, (expensesByCategory.get(categoryName) ?? 0) + Number(tx.amount));
     });
 
-  const [topCategoryName] = [...expensesByCategory.entries()].sort((a, b) => b[1] - a[1])[0] ?? [];
-
   const summary: DashboardSummaryView = {
     balanceAvailable: balance,
     monthlyIncome: income,
     monthlyExpenses: expenses,
+    savingsRate: income > 0 ? Math.round((Math.max(balance, 0) / income) * 100) : 0,
   };
 
   return {
     summary,
-    topCategoryLabel: topCategoryName ?? '-',
     chartData: [
       { label: 'Fijos', amount: fixedExpenses },
       { label: 'Variables', amount: variableExpenses },
@@ -185,6 +185,40 @@ const buildRealDashboard = (transactions: Transaction[]) => {
   };
 };
 
+const buildMonthlyEvolution = (transactions: Transaction[]) => {
+  const now = new Date();
+  const months = Array.from({ length: 6 }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    return {
+      key,
+      label: new Intl.DateTimeFormat('es-DO', { month: 'short' }).format(date),
+      income: 0,
+      expenses: 0,
+      savings: 0,
+    };
+  });
+  const byKey = new Map(months.map((month) => [month.key, month]));
+
+  transactions.forEach((tx) => {
+    const key = tx.date.slice(0, 7);
+    const month = byKey.get(key);
+    if (!month) return;
+
+    const amount = Number(tx.amount);
+    if (CLASSIFICATION_META[tx.classification].type === 'income') {
+      month.income += amount;
+    } else {
+      month.expenses += amount;
+    }
+  });
+
+  return months.map((month) => ({
+    ...month,
+    savings: Math.max(month.income - month.expenses, 0),
+  }));
+};
+
 export function DashboardOverview() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -198,22 +232,21 @@ export function DashboardOverview() {
   const loadTransactions = useCallback(async () => {
     setTransactionsLoading(true);
     try {
-      const range = getPeriodRange(activePeriod);
       const pageSize = 100;
       let offset = 0;
       let hasMore = true;
       const allItems: Transaction[] = [];
 
       while (hasMore) {
-        const response = await transactionService.list({ ...range, limit: pageSize, offset });
+        const response = await transactionService.list({ limit: pageSize, offset });
         allItems.push(...response.items);
         hasMore = response.hasMore;
         offset += pageSize;
       }
 
-      setTransactions(allItems);
-      const registeredResponse = await transactionService.list({ limit: pageSize, offset: 0 });
-      setRegisteredTransactions(registeredResponse.items);
+      const range = getPeriodRange(activePeriod);
+      setTransactions(allItems.filter((tx) => tx.date >= range.startDate && tx.date <= range.endDate));
+      setRegisteredTransactions(allItems);
     } catch {
       setTransactions([]);
       setRegisteredTransactions([]);
@@ -227,6 +260,7 @@ export function DashboardOverview() {
   }, [loadTransactions]);
 
   const realDashboard = useMemo(() => buildRealDashboard(transactions), [transactions]);
+  const monthlyEvolution = useMemo(() => buildMonthlyEvolution(registeredTransactions), [registeredTransactions]);
   const summary = realDashboard.summary;
 
   const money = (value: number) => formatCurrency(value, currency);
@@ -243,18 +277,12 @@ export function DashboardOverview() {
       .slice(0, 6)
       .map(toRecentTransaction);
   }, [registeredTransactions]);
-  const topCategoryLabel = realDashboard.topCategoryLabel;
-
   return (
     <>
-      <header className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-950/5">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">{t('dashboard.title')}</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-              {t('dashboard.subtitle')} Cambia entre hoy, semana, mes y año para ver cómo se mueven tus números.
-            </p>
-          </div>
+      <PageHeader
+        title={t('dashboard.title')}
+        description={`${t('dashboard.subtitle')} Cambia entre hoy, semana, mes y año para ver cómo se mueven tus números.`}
+        action={
           <button
             type="button"
             onClick={() => router.push('/transactions?new=1')}
@@ -263,8 +291,8 @@ export function DashboardOverview() {
             <Plus className="h-5 w-5" />
             {t('dashboard.addRecord')}
           </button>
-        </div>
-      </header>
+        }
+      />
 
       <div className="mt-6 inline-flex rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
         {PERIOD_KEYS.map((periodKey) => {
@@ -308,7 +336,13 @@ export function DashboardOverview() {
           accent="rose"
           hint={PERIOD_CAPTION[activePeriod]}
         />
-        <StatCard label={t('card.topCategory')} value={topCategoryLabel} icon={Tag} accent="violet" />
+        <StatCard
+          label="Ahorro"
+          value={`${summary.savingsRate}%`}
+          icon={PiggyBank}
+          accent="emerald"
+          hint="Del ingreso registrado"
+        />
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
@@ -327,6 +361,38 @@ export function DashboardOverview() {
           title={t('category.title')}
           caption={PERIOD_CAPTION[activePeriod]}
         />
+      </div>
+
+      <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-950/5">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-black text-slate-950">Evolución mensual</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-500">Ingresos, gastos y ahorro de los últimos 6 meses.</p>
+          </div>
+          <span className="hidden rounded-full bg-indigo-50 px-3 py-1 text-xs font-black text-indigo-600 sm:inline-flex">
+            Real
+          </span>
+        </div>
+        <div className="mt-6 grid h-64 grid-cols-6 items-end gap-3">
+          {monthlyEvolution.map((month) => {
+            const max = Math.max(...monthlyEvolution.flatMap((item) => [item.income, item.expenses, item.savings]), 1);
+            return (
+              <div key={month.key} className="flex h-full flex-col justify-end gap-2">
+                <div className="flex flex-1 items-end justify-center gap-1.5">
+                  <span className="w-3 rounded-t-md bg-emerald-500" style={{ height: `${Math.max((month.income / max) * 100, month.income > 0 ? 4 : 0)}%` }} />
+                  <span className="w-3 rounded-t-md bg-rose-400" style={{ height: `${Math.max((month.expenses / max) * 100, month.expenses > 0 ? 4 : 0)}%` }} />
+                  <span className="w-3 rounded-t-md bg-indigo-600" style={{ height: `${Math.max((month.savings / max) * 100, month.savings > 0 ? 4 : 0)}%` }} />
+                </div>
+                <span className="text-center text-xs font-black uppercase text-slate-400">{month.label}</span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-5 flex flex-wrap gap-4 text-xs font-bold text-slate-500">
+          <span><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" />Ingresos</span>
+          <span><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-rose-400" />Gastos</span>
+          <span><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-indigo-600" />Ahorro</span>
+        </div>
       </div>
 
       <div className="mt-6">

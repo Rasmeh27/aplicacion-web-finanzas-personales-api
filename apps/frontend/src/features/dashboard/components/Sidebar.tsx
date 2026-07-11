@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import {
   ArrowLeftRight,
@@ -18,6 +19,11 @@ import { cn } from '@/shared/utils/cn';
 import { useTranslation } from '@/shared/i18n/useTranslation';
 import type { TranslationKey } from '@/shared/i18n/translations';
 import { getHealthScore, type HealthTone } from '../utils/dashboard-data';
+import {
+  dashboardReportsService,
+  type FinancialHealthResponse,
+  type FinancialHealthStatus,
+} from '../services/dashboard-reports.service';
 import { SidebarNavItem } from './SidebarNavItem';
 
 type NavItem = {
@@ -65,6 +71,35 @@ const HEALTH_TONE_LABEL: Record<HealthTone, TranslationKey> = {
   empty: 'health.empty',
 };
 
+const HEALTH_STATUS_TONE: Record<FinancialHealthStatus, HealthTone> = {
+  excellent: 'excellent',
+  stable: 'good',
+  attention: 'fair',
+  critical: 'poor',
+};
+
+const getHealthLetter = (score: number) => {
+  if (score >= 900) return 'A+';
+  if (score >= 800) return 'A';
+  if (score >= 650) return 'B';
+  if (score >= 450) return 'C';
+  if (score >= 250) return 'D';
+  return 'F';
+};
+
+const toSidebarHealth = (health: FinancialHealthResponse) => {
+  const score = Math.round(health.financialHealthScore * 10);
+  const pct = Math.round(health.financialHealthScore);
+  const tone = HEALTH_STATUS_TONE[health.status];
+
+  return {
+    score,
+    pct,
+    tone,
+    letter: getHealthLetter(score),
+  };
+};
+
 function VersionBadge() {
   return (
     <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-500">
@@ -76,7 +111,33 @@ function VersionBadge() {
 function HealthScoreCard() {
   const { t } = useTranslation();
   const user = useAuthStore((state) => state.user);
-  const { score, pct, tone, letter } = getHealthScore(user);
+  const fallbackHealth = getHealthScore(user);
+  const [realHealth, setRealHealth] = useState<ReturnType<typeof toSidebarHealth> | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const now = new Date();
+
+    setLoading(true);
+    dashboardReportsService
+      .financialHealth({ year: now.getFullYear(), month: now.getMonth() + 1 })
+      .then((health) => {
+        if (!cancelled) setRealHealth(toSidebarHealth(health));
+      })
+      .catch(() => {
+        if (!cancelled) setRealHealth(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const { score, pct, tone, letter } = realHealth ?? fallbackHealth;
   const label = t(HEALTH_TONE_LABEL[tone]);
 
   return (
@@ -91,7 +152,7 @@ function HealthScoreCard() {
       </div>
       <div className="mt-3 flex items-end justify-between gap-3">
         <div>
-          <p className="text-3xl font-black tracking-tight text-slate-950">{score}</p>
+          <p className="text-3xl font-black tracking-tight text-slate-950">{loading && !realHealth ? '...' : score}</p>
           <p className="mt-0.5 text-xs font-bold text-slate-400">de 1000 puntos</p>
         </div>
         <div className="rounded-2xl border border-white bg-white px-3 py-2 text-center shadow-sm">

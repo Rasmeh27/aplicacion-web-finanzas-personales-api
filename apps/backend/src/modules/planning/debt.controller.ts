@@ -23,6 +23,27 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 export class DebtController {
   constructor(private readonly service: DebtService) {}
 
+  @Get()
+  @ApiOperation({
+    summary: 'Listar deudas',
+    description: 'Lista las deudas del usuario autenticado con balance y progreso calculado.',
+  })
+  list(@Request() req: any) {
+    return this.service.list(this.getUserId(req));
+  }
+
+  @Get('summary')
+  @ApiOperation({
+    summary: 'Resumen de deudas',
+    description: 'Resume saldo pendiente, pagos mínimos, ratio deuda/ingreso y deudas activas.',
+  })
+  summary(
+    @Request() req: any,
+    @Query() query: DebtIncomeRatioQueryDto,
+  ) {
+    return this.service.getSummary(this.getUserId(req), query.year, query.month);
+  }
+
   @Post()
   @ApiOperation({
     summary: 'Registrar deuda',
@@ -71,6 +92,18 @@ export class DebtController {
     @Body() dto: CreateDebtPaymentDto,
   ) {
     return this.service.registerPayment(this.getUserId(req), debtId, dto);
+  }
+
+  @Get(':debtId/payments')
+  @ApiOperation({
+    summary: 'Listar pagos de una deuda',
+    description: 'Lista los pagos registrados para una deuda del usuario autenticado.',
+  })
+  listPayments(
+    @Request() req: any,
+    @Param('debtId') debtId: string,
+  ) {
+    return this.service.listPayments(this.getUserId(req), debtId);
   }
 
   private getUserId(req: any): string {

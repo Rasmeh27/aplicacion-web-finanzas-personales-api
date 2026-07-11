@@ -12,6 +12,10 @@ export const authService = {
     return data;
   },
 
+  async forgotPassword(email: string): Promise<void> {
+    await apiClient.post('/auth/forgot-password', { email });
+  },
+
   async logout(refreshToken: string | null): Promise<void> {
     await apiClient.post('/auth/logout', { refreshToken });
   },

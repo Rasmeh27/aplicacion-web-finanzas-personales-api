@@ -1,10 +1,10 @@
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout';
-import { ComingSoon } from '@/features/dashboard/components/ComingSoon';
+import { DebtsView } from '@/features/debts/components/DebtsView';
 
 export default function DebtsPage() {
   return (
     <DashboardLayout>
-      <ComingSoon titleKey="nav.debts" />
+      <DebtsView />
     </DashboardLayout>
   );
 }

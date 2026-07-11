@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Plus, Target } from 'lucide-react';
 import { useAuthStore } from '@/store/slices/auth.store';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+import { PageHeader } from '@/shared/components/PageHeader';
 import { goalService } from '../services/goal.service';
 import type {
   CreateContributionPayload,
@@ -258,22 +259,20 @@ export function GoalsView() {
 
   return (
     <>
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">Metas</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Crea metas de ahorro, aporta dinero y sigue tu progreso hacia cada objetivo.
-          </p>
-        </div>
+      <PageHeader
+        title="Metas"
+        description="Crea metas de ahorro, aporta dinero y sigue tu progreso hacia cada objetivo."
+        action={
         <button
           type="button"
           onClick={openCreate}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-sm shadow-indigo-600/25 transition hover:bg-indigo-700"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-indigo-600/25 transition hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-600/25 sm:w-auto"
         >
           <Plus className="h-4 w-4" />
           Nueva meta
         </button>
-      </header>
+        }
+      />
 
       <div className="mt-6">
         <GoalSummaryCards summary={summary} currency={currency} loading={summaryLoading} />

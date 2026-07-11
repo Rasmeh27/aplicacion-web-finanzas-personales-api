@@ -83,7 +83,7 @@ export class TransactionService {
 
   async remove(userId: string, id: string): Promise<void> {
     await this.findOne(userId, id);
-    await this.repo.delete({ id, userId });
+    await this.repo.softDelete({ id, userId });
   }
 
   async getMonthlySummary(

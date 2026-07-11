@@ -119,7 +119,7 @@ export class FinancialGoalService {
 
   async remove(userId: string, id: string): Promise<void> {
     await this.findOne(userId, id);
-    await this.goalRepo.delete({ id, userId });
+    await this.goalRepo.softDelete({ id, userId });
   }
 
   /**
