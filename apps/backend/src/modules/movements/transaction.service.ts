@@ -45,6 +45,8 @@ export class TransactionService {
       notes: dto.notes ?? null,
       categoryId: dto.categoryId ?? null,
       date: dto.date ?? this.buildTodayDateString(),
+      isRecurring: dto.isRecurring ?? false,
+      recurrenceFrequency: dto.isRecurring ? dto.recurrenceFrequency ?? null : null,
     });
     return this.repo.save(tx);
   }
@@ -74,6 +76,12 @@ export class TransactionService {
     if (dto.notes !== undefined) patch.notes = dto.notes;
     if (dto.categoryId !== undefined) patch.categoryId = dto.categoryId;
     if (dto.date !== undefined) patch.date = dto.date;
+    if (dto.isRecurring !== undefined) {
+      patch.isRecurring = dto.isRecurring;
+      patch.recurrenceFrequency = dto.isRecurring ? dto.recurrenceFrequency ?? null : null;
+    } else if (dto.recurrenceFrequency !== undefined) {
+      patch.recurrenceFrequency = dto.recurrenceFrequency;
+    }
 
     if (Object.keys(patch).length > 0) {
       await this.repo.update({ id, userId }, patch);

@@ -20,6 +20,13 @@ export {
   TransactionType,
 } from './transaction.enums';
 
+export enum TransactionRecurrenceFrequency {
+  WEEKLY = 'weekly',
+  BIWEEKLY = 'biweekly',
+  MONTHLY = 'monthly',
+  YEARLY = 'yearly',
+}
+
 @Entity('movements')
 @Index(['userId', 'date'])
 @Index(['userId', 'type', 'date'])
@@ -70,6 +77,12 @@ export class Transaction {
   @ManyToOne(() => Category, { nullable: true })
   @JoinColumn({ name: 'category_id' })
   category: Category;
+
+  @Column({ name: 'is_recurring', type: 'boolean', default: false })
+  isRecurring: boolean;
+
+  @Column({ name: 'recurrence_frequency', type: 'text', nullable: true })
+  recurrenceFrequency: TransactionRecurrenceFrequency | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

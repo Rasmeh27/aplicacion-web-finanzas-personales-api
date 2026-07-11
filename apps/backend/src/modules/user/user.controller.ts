@@ -16,6 +16,11 @@ export class UserController {
     return this.service.findAll(req.user.id);
   }
 
+  @Get('me/export')
+  exportMyData(@Request() req: any) {
+    return this.service.exportAccountData(req.user.id);
+  }
+
   @Patch('me/preferences')
   updatePreferences(@Request() req: any, @Body() dto: UpdateUserPreferencesDto) {
     return this.service.updatePreferences(req.user.id, dto);

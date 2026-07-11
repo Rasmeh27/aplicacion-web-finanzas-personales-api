@@ -33,6 +33,15 @@ export const debtService = {
     return data;
   },
 
+  async update(debtId: string, payload: CreateDebtPayload): Promise<Debt> {
+    const { data } = await apiClient.patch<Debt>(`/planning/debts/${debtId}`, payload);
+    return data;
+  },
+
+  async remove(debtId: string): Promise<void> {
+    await apiClient.delete(`/planning/debts/${debtId}`);
+  },
+
   async registerPayment(debtId: string, payload: CreateDebtPaymentPayload): Promise<DebtPayment> {
     const { data } = await apiClient.post<DebtPayment>(`/planning/debts/${debtId}/payments`, payload);
     return data;

@@ -19,6 +19,13 @@ export const TRANSACTION_CLASSIFICATIONS = [
   'variable_expense',
 ] as const;
 
+export const TRANSACTION_RECURRENCE_FREQUENCIES = [
+  'weekly',
+  'biweekly',
+  'monthly',
+  'yearly',
+] as const;
+
 export const transactionSchema = z.object({
   classification: z.enum(TRANSACTION_CLASSIFICATIONS, {
     required_error: 'Selecciona una clasificación.',
@@ -49,6 +56,16 @@ export const transactionSchema = z.object({
     .min(1, 'La descripción es obligatoria.')
     .max(240, 'Máximo 240 caracteres.'),
   notes: emptyToUndefined(z.string().max(500, 'Máximo 500 caracteres.').optional()),
+  isRecurring: z.boolean().default(false),
+  recurrenceFrequency: emptyToUndefined(z.enum(TRANSACTION_RECURRENCE_FREQUENCIES).optional()),
+}).superRefine((value, ctx) => {
+  if (value.isRecurring && !value.recurrenceFrequency) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['recurrenceFrequency'],
+      message: 'Selecciona la frecuencia de recurrencia.',
+    });
+  }
 });
 
 export type TransactionFormValues = z.infer<typeof transactionSchema>;

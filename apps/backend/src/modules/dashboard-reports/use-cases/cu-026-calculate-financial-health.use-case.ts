@@ -12,7 +12,7 @@ import {
   FinancialGoalStatus,
 } from '../../planning/entities/financial-goal.entity';
 
-export type FinancialHealthStatus = 'excellent' | 'stable' | 'attention' | 'critical';
+export type FinancialHealthStatus = 'optimal' | 'healthy' | 'stable' | 'weak' | 'critical';
 
 export interface FinancialHealthResponse {
   periodMonth: string;
@@ -248,9 +248,10 @@ export class CalculateFinancialHealthUseCase {
   }
 
   private resolveStatus(score: number): FinancialHealthStatus {
-    if (score >= 80) return 'excellent';
-    if (score >= 60) return 'stable';
-    if (score >= 40) return 'attention';
+    if (score >= 85) return 'optimal';
+    if (score >= 70) return 'healthy';
+    if (score >= 50) return 'stable';
+    if (score >= 30) return 'weak';
     return 'critical';
   }
 

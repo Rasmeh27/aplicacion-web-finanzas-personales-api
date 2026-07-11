@@ -6,6 +6,8 @@ export type TransactionClassification =
   | 'fixed_expense'
   | 'variable_expense';
 
+export type TransactionRecurrenceFrequency = 'weekly' | 'biweekly' | 'monthly' | 'yearly';
+
 export type TransactionCategory = {
   id: string;
   name: string;
@@ -25,6 +27,8 @@ export type Transaction = {
   date: string;
   categoryId: string | null;
   category?: TransactionCategory | null;
+  isRecurring: boolean;
+  recurrenceFrequency: TransactionRecurrenceFrequency | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -70,6 +74,8 @@ export type CreateTransactionPayload = {
   categoryId?: string;
   description: string;
   notes?: string;
+  isRecurring?: boolean;
+  recurrenceFrequency?: TransactionRecurrenceFrequency;
 };
 
 export type UpdateTransactionPayload = Partial<CreateTransactionPayload>;

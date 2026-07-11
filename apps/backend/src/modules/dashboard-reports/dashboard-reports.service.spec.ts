@@ -645,7 +645,7 @@ describe('DashboardReportsService - Dashboard reports (CU-019/CU-020/CU-021/CU-0
       totalDebtRemaining: 30000,
       goalsProgressPercentage: 50,
       financialHealthScore: 90,
-      status: 'excellent',
+      status: 'optimal',
       recommendations: [
         'Priorizar pagos a deudas activas para bajar el saldo pendiente.',
       ],

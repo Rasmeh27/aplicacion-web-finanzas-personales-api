@@ -10,9 +10,11 @@ import {
   Filter,
   Landmark,
   Loader2,
+  Pencil,
   Plus,
   Search,
   ShieldCheck,
+  Trash2,
   WalletCards,
 } from 'lucide-react';
 import { Modal } from '@/shared/components/Modal';
@@ -159,6 +161,7 @@ export function DebtsView() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('active');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [debtModalOpen, setDebtModalOpen] = useState(false);
+  const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
   const [paymentDebt, setPaymentDebt] = useState<Debt | null>(null);
   const [detailDebt, setDetailDebt] = useState<Debt | null>(null);
   const [detailPayments, setDetailPayments] = useState<DebtPayment[]>([]);
@@ -229,13 +232,38 @@ export function DebtsView() {
     setActionError(null);
   };
 
+  const resetDebtForm = () => {
+    setDebtForm({ name: '', creditor: '', initialAmount: '', minimumPayment: '', interestRatePct: '', dueDay: '' });
+  };
+
+  const openCreateDebt = () => {
+    setEditingDebt(null);
+    resetDebtForm();
+    setActionError(null);
+    setDebtModalOpen(true);
+  };
+
+  const openEditDebt = (debt: Debt) => {
+    setEditingDebt(debt);
+    setDebtForm({
+      name: debt.name,
+      creditor: debt.creditor ?? '',
+      initialAmount: String(debt.initialAmount ?? ''),
+      minimumPayment: String(debt.minimumPayment ?? ''),
+      interestRatePct: String(debt.interestRatePct ?? ''),
+      dueDay: debt.dueDay ? String(debt.dueDay) : '',
+    });
+    setActionError(null);
+    setDebtModalOpen(true);
+  };
+
   const resetFilters = () => {
     setSearch('');
     setStatusFilter('all');
     setTypeFilter('all');
   };
 
-  const handleCreateDebt = async () => {
+  const handleSaveDebt = async () => {
     setDebtSaving(true);
     setActionError(null);
     try {
@@ -248,14 +276,32 @@ export function DebtsView() {
         dueDay: debtForm.dueDay ? Number(debtForm.dueDay) : undefined,
         currency,
       };
-      await debtService.create(payload);
+      if (editingDebt) {
+        await debtService.update(editingDebt.id, payload);
+      } else {
+        await debtService.create(payload);
+      }
       setDebtModalOpen(false);
-      setDebtForm({ name: '', creditor: '', initialAmount: '', minimumPayment: '', interestRatePct: '', dueDay: '' });
+      setEditingDebt(null);
+      resetDebtForm();
       await load();
     } catch (err) {
-      setActionError(getErrorMessage(err, 'No se pudo crear la deuda.'));
+      setActionError(getErrorMessage(err, editingDebt ? 'No se pudo actualizar la deuda.' : 'No se pudo crear la deuda.'));
     } finally {
       setDebtSaving(false);
+    }
+  };
+
+  const handleDeleteDebt = async (debt: Debt) => {
+    const confirmed = window.confirm(`¿Eliminar la deuda "${debt.name}"? Se ocultará de tus listas y se conservará la trazabilidad.`);
+    if (!confirmed) return;
+
+    setActionError(null);
+    try {
+      await debtService.remove(debt.id);
+      await load();
+    } catch (err) {
+      setActionError(getErrorMessage(err, 'No se pudo eliminar la deuda.'));
     }
   };
 
@@ -300,10 +346,7 @@ export function DebtsView() {
           action={
           <button
             type="button"
-            onClick={() => {
-              setActionError(null);
-              setDebtModalOpen(true);
-            }}
+            onClick={openCreateDebt}
             className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-indigo-600/25 transition hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-600/25 sm:w-auto"
           >
             <Plus className="h-4 w-4" />
@@ -498,6 +541,15 @@ export function DebtsView() {
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex flex-col gap-2">
+                          <div className="flex gap-2">
+                            <button type="button" onClick={() => openEditDebt(debt)} className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 transition hover:bg-slate-50">
+                              <Pencil className="h-3.5 w-3.5" />
+                              Editar
+                            </button>
+                            <button type="button" onClick={() => void handleDeleteDebt(debt)} className="inline-flex items-center justify-center rounded-lg border border-rose-100 px-3 py-2 text-xs font-black text-rose-600 transition hover:bg-rose-50" aria-label={`Eliminar ${debt.name}`}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                           <button type="button" onClick={() => openPayment(debt)} disabled={debt.status !== 'active'} className="inline-flex items-center justify-center gap-2 rounded-lg border border-indigo-100 px-3 py-2 text-xs font-black text-indigo-600 transition hover:bg-indigo-50 disabled:opacity-50">
                             <CreditCard className="h-3.5 w-3.5" />
                             Registrar pago
@@ -525,15 +577,21 @@ export function DebtsView() {
 
       <Modal
         open={debtModalOpen}
-        title="Nueva deuda"
-        description="Registra préstamos, tarjetas, compras financiadas o compromisos activos."
-        onClose={() => setDebtModalOpen(false)}
+        title={editingDebt ? 'Editar deuda' : 'Nueva deuda'}
+        description={editingDebt ? 'Actualiza los datos de esta obligación financiera.' : 'Registra préstamos, tarjetas, compras financiadas o compromisos activos.'}
+        onClose={() => {
+          setDebtModalOpen(false);
+          setEditingDebt(null);
+        }}
         footer={
           <>
-            <button type="button" onClick={() => setDebtModalOpen(false)} disabled={debtSaving} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60">Cancelar</button>
-            <button type="button" onClick={() => void handleCreateDebt()} disabled={debtSaving} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-black text-white shadow-sm shadow-indigo-600/25 transition hover:bg-indigo-700 disabled:opacity-60">
+            <button type="button" onClick={() => {
+              setDebtModalOpen(false);
+              setEditingDebt(null);
+            }} disabled={debtSaving} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60">Cancelar</button>
+            <button type="button" onClick={() => void handleSaveDebt()} disabled={debtSaving} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-black text-white shadow-sm shadow-indigo-600/25 transition hover:bg-indigo-700 disabled:opacity-60">
               {debtSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-              Guardar deuda
+              {editingDebt ? 'Guardar cambios' : 'Guardar deuda'}
             </button>
           </>
         }

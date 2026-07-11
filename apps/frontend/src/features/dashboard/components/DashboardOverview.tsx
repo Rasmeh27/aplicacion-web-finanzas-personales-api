@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { PiggyBank, Plus, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import { useAuthStore } from '@/store/slices/auth.store';
 import { PageHeader } from '@/shared/components/PageHeader';
+import { cn } from '@/shared/utils/cn';
 import { formatCurrency } from '@/shared/utils/format-currency';
 import { useTranslation } from '@/shared/i18n/useTranslation';
 import type { TranslationKey } from '@/shared/i18n/translations';
@@ -49,10 +50,10 @@ const PERIOD_CHART_TITLE: Record<DashboardPeriod, string> = {
 };
 
 const PERIOD_CHART_SUBTITLE: Record<DashboardPeriod, string> = {
-  today: 'Gastos, ahorro y balance proyectados para hoy',
-  week: 'Gastos, ahorro y balance proyectados para la semana',
-  month: 'Gastos fijos, variables, ahorro y balance',
-  year: 'Gastos, ahorro y balance proyectados para el año',
+  today: 'Gastos y ahorro proyectados para hoy',
+  week: 'Gastos y ahorro proyectados para la semana',
+  month: 'Gastos fijos, variables y ahorro estimado',
+  year: 'Gastos y ahorro proyectados para el año',
 };
 
 type DashboardSummaryView = {
@@ -168,8 +169,8 @@ const buildRealDashboard = (transactions: Transaction[]) => {
     chartData: [
       { label: 'Fijos', amount: fixedExpenses },
       { label: 'Variables', amount: variableExpenses },
-      { label: 'Ahorro', amount: 0 },
-      { label: 'Balance', amount: Math.max(balance, 0) },
+      { label: 'Ahorro', amount: Math.max(balance, 0) },
+      { label: 'Balance', amount: balance },
     ].map((bar, _, bars) => ({
       ...bar,
       highlight: bar.amount > 0 && bar.amount === Math.max(...bars.map((item) => item.amount)),
@@ -187,12 +188,13 @@ const buildRealDashboard = (transactions: Transaction[]) => {
 
 const buildMonthlyEvolution = (transactions: Transaction[]) => {
   const now = new Date();
-  const months = Array.from({ length: 6 }, (_, index) => {
-    const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
+  const months = Array.from({ length: 12 }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth() - (11 - index), 1);
     const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
     return {
       key,
       label: new Intl.DateTimeFormat('es-DO', { month: 'short' }).format(date),
+      year: date.getFullYear(),
       income: 0,
       expenses: 0,
       savings: 0,
@@ -261,6 +263,10 @@ export function DashboardOverview() {
 
   const realDashboard = useMemo(() => buildRealDashboard(transactions), [transactions]);
   const monthlyEvolution = useMemo(() => buildMonthlyEvolution(registeredTransactions), [registeredTransactions]);
+  const evolutionMax = useMemo(
+    () => Math.max(...monthlyEvolution.flatMap((item) => [item.income, item.expenses, item.savings]), 1),
+    [monthlyEvolution],
+  );
   const summary = realDashboard.summary;
 
   const money = (value: number) => formatCurrency(value, currency);
@@ -350,7 +356,7 @@ export function DashboardOverview() {
           <SpendingChartPlaceholder
             data={chartData}
             currency={currency}
-          title={PERIOD_CHART_TITLE[activePeriod]}
+            title={PERIOD_CHART_TITLE[activePeriod]}
             subtitle={transactionsLoading ? 'Cargando movimientos reales...' : PERIOD_CHART_SUBTITLE[activePeriod]}
             legend={t('chart.legend')}
           />
@@ -367,23 +373,52 @@ export function DashboardOverview() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <h2 className="text-lg font-black text-slate-950">Evolución mensual</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-500">Ingresos, gastos y ahorro de los últimos 6 meses.</p>
+            <p className="mt-1 text-sm font-semibold text-slate-500">Ingresos, gastos y ahorro de los últimos 12 meses.</p>
           </div>
           <span className="hidden rounded-full bg-indigo-50 px-3 py-1 text-xs font-black text-indigo-600 sm:inline-flex">
-            Real
+            Arrastra para ver más
           </span>
         </div>
-        <div className="mt-6 grid h-64 grid-cols-6 items-end gap-3">
+        <div className="mt-6 max-h-[540px] space-y-4 overflow-y-auto overscroll-contain pr-2">
           {monthlyEvolution.map((month) => {
-            const max = Math.max(...monthlyEvolution.flatMap((item) => [item.income, item.expenses, item.savings]), 1);
+            const rows = [
+              { label: 'Ingresos', value: month.income, color: 'bg-emerald-500', text: 'text-emerald-600' },
+              { label: 'Gastos', value: month.expenses, color: 'bg-rose-500', text: 'text-rose-600' },
+              { label: 'Ahorro', value: month.savings, color: 'bg-indigo-600', text: 'text-indigo-600' },
+            ];
+            const hasData = rows.some((row) => row.value > 0);
+
             return (
-              <div key={month.key} className="flex h-full flex-col justify-end gap-2">
-                <div className="flex flex-1 items-end justify-center gap-1.5">
-                  <span className="w-3 rounded-t-md bg-emerald-500" style={{ height: `${Math.max((month.income / max) * 100, month.income > 0 ? 4 : 0)}%` }} />
-                  <span className="w-3 rounded-t-md bg-rose-400" style={{ height: `${Math.max((month.expenses / max) * 100, month.expenses > 0 ? 4 : 0)}%` }} />
-                  <span className="w-3 rounded-t-md bg-indigo-600" style={{ height: `${Math.max((month.savings / max) * 100, month.savings > 0 ? 4 : 0)}%` }} />
+              <div key={month.key} className="grid gap-3 sm:grid-cols-[72px_minmax(0,1fr)] sm:items-center">
+                <div className="flex items-center justify-between sm:block">
+                  <span className="text-sm font-black uppercase text-slate-500">{month.label}</span>
+                  <span className="ml-2 text-xs font-black text-slate-300 sm:ml-0 sm:mt-1 sm:block">{month.year}</span>
+                  {!hasData ? (
+                    <span className="rounded-full bg-slate-50 px-2.5 py-1 text-xs font-black text-slate-400 sm:mt-2 sm:inline-flex">
+                      Sin datos
+                    </span>
+                  ) : null}
                 </div>
-                <span className="text-center text-xs font-black uppercase text-slate-400">{month.label}</span>
+                <div className="space-y-2.5 rounded-2xl border border-slate-100 bg-slate-50/60 p-3">
+                  {rows.map((row) => {
+                    const width = row.value > 0 ? Math.max((row.value / evolutionMax) * 100, 6) : 0;
+
+                    return (
+                      <div key={row.label} className="grid grid-cols-[72px_minmax(0,1fr)_94px] items-center gap-3">
+                        <span className="text-xs font-black text-slate-500">{row.label}</span>
+                        <div className="h-2.5 overflow-hidden rounded-full bg-white shadow-inner shadow-slate-200/60">
+                          <div
+                            className={cn('h-full rounded-full transition-all', row.color)}
+                            style={{ width: `${width}%` }}
+                          />
+                        </div>
+                        <span className={cn('truncate text-right text-xs font-black', row.value > 0 ? row.text : 'text-slate-300')}>
+                          {row.value > 0 ? formatCurrency(row.value, currency) : '-'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             );
           })}

@@ -44,7 +44,11 @@ describe('BudgetsService - presupuestos mensuales por categoría', () => {
           provide: getRepositoryToken(Budget),
           useValue: {
             create: jest.fn((data: Partial<Budget>) => data),
-            save: jest.fn((b: Partial<Budget>) => ({ id: 'budget-1', ...b })),
+            save: jest.fn((b: Partial<Budget> | Partial<Budget>[]) =>
+              Array.isArray(b)
+                ? b.map((item, index) => ({ id: `budget-${index + 1}`, ...item }))
+                : { id: 'budget-1', ...b },
+            ),
             find: jest.fn(),
             findAndCount: jest.fn(),
             findOne: jest.fn(),
@@ -71,12 +75,11 @@ describe('BudgetsService - presupuestos mensuales por categoría', () => {
   describe('create', () => {
     it('crea un presupuesto válido por categoría de gasto', async () => {
       jest.spyOn(categoryRepo, 'findOne').mockResolvedValue(expenseCategory);
-      jest.spyOn(budgetRepo, 'findOne').mockResolvedValue(null);
       jest.spyOn(txRepo, 'find').mockResolvedValue([]);
-      jest
-        .spyOn(budgetRepo, 'findOne')
-        .mockResolvedValueOnce(null) // ensureNoDuplicate
-        .mockResolvedValueOnce({
+      jest.spyOn(budgetRepo, 'find')
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          {
           id: 'budget-1',
           userId,
           categoryId,
@@ -89,7 +92,8 @@ describe('BudgetsService - presupuestos mensuales por categoría', () => {
           alertThresholdPct: 80,
           isActive: true,
           category: expenseCategory,
-        } as Budget);
+          } as Budget,
+        ]);
 
       const result = await service.create(userId, validDto);
 
@@ -107,8 +111,9 @@ describe('BudgetsService - presupuestos mensuales por categoría', () => {
           periodType: 'monthly',
         }),
       );
-      expect(result.amountLimit).toBe(8000);
-      expect(result.status).toBe('safe');
+      expect(result).toHaveLength(1);
+      expect(result[0].amountLimit).toBe(8000);
+      expect(result[0].status).toBe('safe');
     });
 
     it('rechaza amountLimit <= 0 a nivel servicio no aplica (lo valida el DTO); pero rechaza categoría de ingreso', async () => {
@@ -130,13 +135,17 @@ describe('BudgetsService - presupuestos mensuales por categoría', () => {
 
     it('rechaza un segundo presupuesto activo para la misma categoría/mes/año', async () => {
       jest.spyOn(categoryRepo, 'findOne').mockResolvedValue(expenseCategory);
-      jest.spyOn(budgetRepo, 'findOne').mockResolvedValue({
-        id: 'existing',
-        userId,
-        categoryId,
-        periodMonth: '2026-06-01',
-        isActive: true,
-      } as Budget);
+      jest.spyOn(budgetRepo, 'find').mockResolvedValue([
+        {
+          id: 'existing',
+          userId,
+          categoryId,
+          periodMonth: '2026-06-01',
+          month: 6,
+          year: 2026,
+          isActive: true,
+        } as Budget,
+      ]);
 
       await expect(service.create(userId, validDto)).rejects.toThrow(BadRequestException);
       expect(budgetRepo.save).not.toHaveBeenCalled();

@@ -70,6 +70,37 @@ export class UserService {
     return this.updateExistingProfile(id, dto);
   }
 
+  async exportAccountData(id: string) {
+    const profile = await this.findById(id);
+    if (!profile) {
+      throw new NotFoundException('Profile not found');
+    }
+
+    const tables = [
+      'movements',
+      'categories',
+      'budgets',
+      'financial_goals',
+      'goal_contributions',
+      'debts',
+      'debt_payments',
+      'assistant_sessions',
+      'assistant_messages',
+      'user_subscriptions',
+    ];
+
+    const exported: Record<string, unknown[]> = {};
+    for (const table of tables) {
+      exported[table] = await this.safeSelectByUser(table, id);
+    }
+
+    return {
+      exportedAt: new Date().toISOString(),
+      profile,
+      data: exported,
+    };
+  }
+
   async removeAccount(id: string): Promise<{ id: string; deleted: true }> {
     const current = await this.findById(id);
     if (!current) {
@@ -134,6 +165,15 @@ export class UserService {
     return Object.fromEntries(
       Object.entries(data).filter(([, value]) => value !== undefined),
     ) as UpsertProfileData;
+  }
+
+  private async safeSelectByUser(table: string, userId: string): Promise<unknown[]> {
+    const exists = await this.dataSource.query('select to_regclass($1) as table_name', [
+      `public.${table}`,
+    ]);
+    if (!exists[0]?.table_name) return [];
+
+    return this.dataSource.query(`select * from public.${table} where user_id = $1`, [userId]);
   }
 
   buildFullName(firstName?: string, lastName?: string, fullName?: string): string | undefined {

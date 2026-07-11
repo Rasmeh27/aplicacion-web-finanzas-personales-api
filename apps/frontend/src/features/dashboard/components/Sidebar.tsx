@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import {
   ArrowLeftRight,
+  BarChart3,
   Landmark,
   LayoutDashboard,
   Settings,
@@ -39,6 +40,7 @@ const navItems: NavItem[] = [
   { href: '/budgets', labelKey: 'nav.budgets', icon: Wallet },
   { href: '/goals', labelKey: 'nav.goals', icon: Target },
   { href: '/debts', labelKey: 'nav.debts', icon: Landmark },
+  { href: '/reports', labelKey: 'nav.reports', icon: BarChart3 },
   { href: '/ai-assistant', labelKey: 'nav.aiAssistant', icon: Sparkles, badge: 'PLUS' },
   { href: '/profile', labelKey: 'nav.profile', icon: User },
   { href: '/settings', labelKey: 'nav.settings', icon: Settings },
@@ -72,10 +74,19 @@ const HEALTH_TONE_LABEL: Record<HealthTone, TranslationKey> = {
 };
 
 const HEALTH_STATUS_TONE: Record<FinancialHealthStatus, HealthTone> = {
-  excellent: 'excellent',
+  optimal: 'excellent',
+  healthy: 'excellent',
   stable: 'good',
-  attention: 'fair',
+  weak: 'fair',
   critical: 'poor',
+};
+
+const HEALTH_STATUS_LABEL: Record<FinancialHealthStatus, string> = {
+  optimal: 'Optima',
+  healthy: 'Saludable',
+  stable: 'Estable',
+  weak: 'Debil',
+  critical: 'Critica',
 };
 
 const getHealthLetter = (score: number) => {
@@ -97,6 +108,7 @@ const toSidebarHealth = (health: FinancialHealthResponse) => {
     pct,
     tone,
     letter: getHealthLetter(score),
+    label: HEALTH_STATUS_LABEL[health.status],
   };
 };
 
@@ -138,7 +150,7 @@ function HealthScoreCard() {
   }, []);
 
   const { score, pct, tone, letter } = realHealth ?? fallbackHealth;
-  const label = t(HEALTH_TONE_LABEL[tone]);
+  const label = realHealth?.label ?? t(HEALTH_TONE_LABEL[tone]);
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">

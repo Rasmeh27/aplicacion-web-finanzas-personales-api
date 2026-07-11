@@ -105,6 +105,9 @@ describe('AuthService', () => {
           monthlyVariableExpenseEstimate: 0,
           onboardingCompletedAt: null,
           onboardingVersion: 1,
+          country: null,
+          timezone: null,
+          phoneNumber: null,
         },
       });
     });
@@ -143,6 +146,9 @@ describe('AuthService', () => {
           monthlyVariableExpenseEstimate: 0,
           onboardingCompletedAt: null,
           onboardingVersion: 1,
+          country: null,
+          timezone: null,
+          phoneNumber: null,
         },
         message: 'Cuenta creada. Revisa tu correo para confirmar tu cuenta antes de iniciar sesión.',
       });

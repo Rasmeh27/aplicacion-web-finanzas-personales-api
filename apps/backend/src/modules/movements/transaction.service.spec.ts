@@ -40,6 +40,8 @@ describe('TransactionService - Filtering (CU-011)', () => {
     date: '2026-05-15',
     categoryId,
     category: { id: categoryId, name: 'Alimentación' } as any,
+    isRecurring: false,
+    recurrenceFrequency: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,

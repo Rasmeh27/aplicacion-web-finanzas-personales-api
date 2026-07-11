@@ -9,6 +9,7 @@ import type { Category } from '@/features/categories/services/category.service';
 import {
   transactionSchema,
   TRANSACTION_CLASSIFICATIONS,
+  TRANSACTION_RECURRENCE_FREQUENCIES,
   type TransactionFormValues,
 } from '../schemas/transaction.schema';
 import {
@@ -37,6 +38,13 @@ type Props = {
 };
 
 const CURRENCIES = ['DOP', 'USD', 'EUR'] as const;
+
+const RECURRENCE_LABELS: Record<(typeof TRANSACTION_RECURRENCE_FREQUENCIES)[number], string> = {
+  weekly: 'Semanal',
+  biweekly: 'Quincenal',
+  monthly: 'Mensual',
+  yearly: 'Anual',
+};
 
 const todayString = (): string => {
   const today = new Date();
@@ -87,6 +95,8 @@ export function TransactionFormModal({
       categoryId: undefined,
       description: '',
       notes: '',
+      isRecurring: false,
+      recurrenceFrequency: undefined,
     } as unknown as TransactionFormValues,
   });
 
@@ -100,6 +110,8 @@ export function TransactionFormModal({
         categoryId: initialValues?.categoryId,
         description: initialValues?.description ?? '',
         notes: initialValues?.notes ?? '',
+        isRecurring: initialValues?.isRecurring ?? false,
+        recurrenceFrequency: initialValues?.recurrenceFrequency,
       }) as unknown as TransactionFormValues,
     [defaultCurrency, initialValues],
   );
@@ -114,6 +126,8 @@ export function TransactionFormModal({
         categoryId: transaction.categoryId ?? undefined,
         description: transaction.description ?? '',
         notes: transaction.notes ?? '',
+        isRecurring: transaction.isRecurring ?? false,
+        recurrenceFrequency: transaction.recurrenceFrequency ?? undefined,
       } as unknown as TransactionFormValues);
     } else {
       reset(getCreateValues());
@@ -121,6 +135,7 @@ export function TransactionFormModal({
   }, [open, mode, transaction, getCreateValues, reset]);
 
   const classification = watch('classification');
+  const isRecurring = watch('isRecurring');
   const selectedType = classification ? CLASSIFICATION_TO_TYPE[classification] : undefined;
 
   const visibleCategories = useMemo(
@@ -191,6 +206,8 @@ export function TransactionFormModal({
       categoryId: values.categoryId,
       description: values.description,
       notes: values.notes,
+      isRecurring: values.isRecurring,
+      recurrenceFrequency: values.isRecurring ? values.recurrenceFrequency : undefined,
     };
 
     await onSubmit(payload);
@@ -363,6 +380,44 @@ export function TransactionFormModal({
           />
           {errors.notes ? (
             <p className="mt-1 text-xs font-medium text-rose-600">{errors.notes.message}</p>
+          ) : null}
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <label className="flex items-start gap-3 text-sm font-bold text-slate-800">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              {...register('isRecurring')}
+            />
+            <span>
+              Movimiento recurrente
+              <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">
+                Úsalo para gastos o ingresos que se repiten, como renta, suscripciones, salario o cuotas.
+              </span>
+            </span>
+          </label>
+          {isRecurring ? (
+            <div className="mt-3">
+              <label htmlFor="recurrenceFrequency" className="mb-1.5 block text-sm font-semibold text-slate-800">
+                Frecuencia
+              </label>
+              <select
+                id="recurrenceFrequency"
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-950 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+                {...register('recurrenceFrequency')}
+              >
+                <option value="">Selecciona una frecuencia</option>
+                {TRANSACTION_RECURRENCE_FREQUENCIES.map((frequency) => (
+                  <option key={frequency} value={frequency}>
+                    {RECURRENCE_LABELS[frequency]}
+                  </option>
+                ))}
+              </select>
+              {errors.recurrenceFrequency ? (
+                <p className="mt-1 text-xs font-medium text-rose-600">{errors.recurrenceFrequency.message}</p>
+              ) : null}
+            </div>
           ) : null}
         </div>
 

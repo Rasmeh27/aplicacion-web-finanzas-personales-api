@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { CreateDebtPaymentDto } from './dto/create-debt-payment.dto';
 import { CreateDebtDto } from './dto/create-debt.dto';
+import { UpdateDebtDto } from './dto/update-debt.dto';
 import { Debt, DebtStatus } from './entities/debt.entity';
 import { DebtPayment } from './entities/debt-payment.entity';
 import {
@@ -57,6 +58,45 @@ export class DebtService {
 
   create(userId: string, dto: CreateDebtDto): Promise<Debt> {
     return this.registerDebtUseCase.execute(userId, dto);
+  }
+
+  async update(userId: string, debtId: string, dto: UpdateDebtDto): Promise<Debt> {
+    const debt = await this.debtRepo.findOne({ where: { id: debtId, userId } });
+    if (!debt) {
+      throw new NotFoundException('Deuda no encontrada');
+    }
+
+    const nextInitialAmount = dto.initialAmount ?? Number(debt.initialAmount);
+    const nextMinimumPayment = dto.minimumPayment ?? Number(debt.minimumPayment ?? 0);
+    if (nextMinimumPayment > nextInitialAmount) {
+      throw new BadRequestException('El pago minimo no puede ser mayor que el monto inicial');
+    }
+
+    if (dto.name !== undefined) {
+      const name = dto.name.trim();
+      if (name.length < 3) {
+        throw new BadRequestException('El nombre de la deuda debe tener al menos 3 caracteres');
+      }
+      debt.name = name;
+    }
+
+    if (dto.creditor !== undefined) debt.creditor = dto.creditor.trim() || null;
+    if (dto.initialAmount !== undefined) debt.initialAmount = dto.initialAmount;
+    if (dto.minimumPayment !== undefined) debt.minimumPayment = dto.minimumPayment;
+    if (dto.interestRatePct !== undefined) debt.interestRatePct = dto.interestRatePct;
+    if (dto.dueDay !== undefined) debt.dueDay = dto.dueDay ?? null;
+    if (dto.currency !== undefined) debt.currency = dto.currency.toUpperCase();
+
+    return this.debtRepo.save(debt);
+  }
+
+  async remove(userId: string, debtId: string): Promise<void> {
+    const debt = await this.debtRepo.findOne({ where: { id: debtId, userId } });
+    if (!debt) {
+      throw new NotFoundException('Deuda no encontrada');
+    }
+
+    await this.debtRepo.softRemove(debt);
   }
 
   registerPayment(

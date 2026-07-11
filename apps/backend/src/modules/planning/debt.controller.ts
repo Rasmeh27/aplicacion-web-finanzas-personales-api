@@ -1,8 +1,12 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
+  Patch,
   Post,
   Query,
   Request,
@@ -12,6 +16,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CreateDebtPaymentDto } from './dto/create-debt-payment.dto';
 import { CreateDebtDto } from './dto/create-debt.dto';
+import { UpdateDebtDto } from './dto/update-debt.dto';
 import { DebtIncomeRatioQueryDto } from './dto/debt-income-ratio-query.dto';
 import { DebtService } from './debt.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -55,6 +60,29 @@ export class DebtController {
   })
   create(@Request() req: any, @Body() dto: CreateDebtDto) {
     return this.service.create(this.getUserId(req), dto);
+  }
+
+  @Patch(':debtId')
+  @ApiOperation({
+    summary: 'Actualizar deuda',
+    description: 'Actualiza los datos principales de una deuda del usuario autenticado.',
+  })
+  update(
+    @Request() req: any,
+    @Param('debtId') debtId: string,
+    @Body() dto: UpdateDebtDto,
+  ) {
+    return this.service.update(this.getUserId(req), debtId, dto);
+  }
+
+  @Delete(':debtId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Eliminar deuda',
+    description: 'Elimina una deuda del usuario autenticado conservando trazabilidad interna.',
+  })
+  remove(@Request() req: any, @Param('debtId') debtId: string) {
+    return this.service.remove(this.getUserId(req), debtId);
   }
 
   @Get('income-ratio')

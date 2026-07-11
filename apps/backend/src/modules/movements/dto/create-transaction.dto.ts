@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsNumber,
@@ -15,6 +16,7 @@ import {
 } from 'class-validator';
 import {
   TransactionClassification,
+  TransactionRecurrenceFrequency,
   TransactionType,
 } from '../entities/transaction.entity';
 import { IsTypeCoherentWithClassificationConstraint } from '../validators/classification-type.validator';
@@ -72,4 +74,21 @@ export class CreateTransactionDto {
   @IsOptional()
   @IsUUID()
   categoryId?: string;
+
+  @ApiPropertyOptional({
+    example: false,
+    description: 'Indica si el movimiento se repite de forma recurrente.',
+  })
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  isRecurring?: boolean;
+
+  @ApiPropertyOptional({
+    enum: TransactionRecurrenceFrequency,
+    description: 'Frecuencia del movimiento recurrente.',
+  })
+  @IsOptional()
+  @IsEnum(TransactionRecurrenceFrequency)
+  recurrenceFrequency?: TransactionRecurrenceFrequency;
 }
