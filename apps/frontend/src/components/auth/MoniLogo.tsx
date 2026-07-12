@@ -12,5 +12,3 @@ export function MoniLogo({ className = '' }: MoniLogoProps) {
     </div>
   );
 }
-
-

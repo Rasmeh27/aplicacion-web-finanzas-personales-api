@@ -104,4 +104,3 @@ export class FinancialGoalController {
     throw new UnauthorizedException('Authenticated user is required');
   }
 }
-
