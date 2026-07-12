@@ -7,6 +7,7 @@ import {
   BarChart3,
   Landmark,
   LayoutDashboard,
+  LineChart,
   Settings,
   Sparkles,
   Target,
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react';
 import { MoniLogo } from '@/components/auth/MoniLogo';
 import { useAuthStore } from '@/store/slices/auth.store';
+import { useSubscriptionStore, selectIsPremium } from '@/store/slices/subscription.store';
 import { cn } from '@/shared/utils/cn';
 import { useTranslation } from '@/shared/i18n/useTranslation';
 import type { TranslationKey } from '@/shared/i18n/translations';
@@ -32,6 +34,8 @@ type NavItem = {
   labelKey: TranslationKey;
   icon: LucideIcon;
   badge?: string;
+  /** Función Premium: muestra candado + badge PREMIUM para usuarios Basic. */
+  premium?: boolean;
 };
 
 const navItems: NavItem[] = [
@@ -40,6 +44,7 @@ const navItems: NavItem[] = [
   { href: '/budgets', labelKey: 'nav.budgets', icon: Wallet },
   { href: '/goals', labelKey: 'nav.goals', icon: Target },
   { href: '/debts', labelKey: 'nav.debts', icon: Landmark },
+  { href: '/investments', labelKey: 'nav.investments', icon: LineChart, premium: true },
   { href: '/reports', labelKey: 'nav.reports', icon: BarChart3 },
   { href: '/ai-assistant', labelKey: 'nav.aiAssistant', icon: Sparkles, badge: 'PLUS' },
   { href: '/profile', labelKey: 'nav.profile', icon: User },
@@ -185,18 +190,29 @@ function HealthScoreCard() {
 export function Sidebar() {
   const pathname = usePathname() ?? '';
   const { t } = useTranslation();
+  const isPremium = useSubscriptionStore(selectIsPremium);
+  const refreshSubscription = useSubscriptionStore((state) => state.refresh);
+
+  // El plan se consulta al backend (nunca del login) y se refresca al montar.
+  useEffect(() => {
+    void refreshSubscription();
+  }, [refreshSubscription]);
 
   const renderNav = () =>
-    navItems.map((item) => (
-      <SidebarNavItem
-        key={item.href}
-        href={item.href}
-        label={t(item.labelKey)}
-        icon={item.icon}
-        badge={item.badge}
-        active={isActive(pathname, item.href)}
-      />
-    ));
+    navItems.map((item) => {
+      const locked = Boolean(item.premium) && !isPremium;
+      return (
+        <SidebarNavItem
+          key={item.href}
+          href={item.href}
+          label={t(item.labelKey)}
+          icon={item.icon}
+          badge={locked ? t('plan.badge') : item.badge}
+          locked={locked}
+          active={isActive(pathname, item.href)}
+        />
+      );
+    });
 
   return (
     <>

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
+import { UsStockMarketInvestmentModule } from '../us-stock-market-investment/us-stock-market-investment.module';
 import { Budget } from '../planning/entities/budget.entity';
 import { Category } from '../planning/entities/category.entity';
 import { FinancialGoal } from '../planning/entities/financial-goal.entity';
@@ -28,6 +29,8 @@ import { InternalApiKeyGuard } from './financial-context/guards/internal-api-key
       Category,
     ]),
     SubscriptionsModule,
+    // Contexto premium de inversiones para el resumen financiero interno.
+    UsStockMarketInvestmentModule,
   ],
   controllers: [AssistantController, FinancialContextController],
   providers: [AssistantService, AiServiceClient, FinancialContextService, InternalApiKeyGuard],

@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { SupabaseModule } from './integrations/supabase/supabase.module';
+import { BACKEND_ENV_FILE } from './config/env-file';
 
 // Modulos principales del proyecto
 import { AccountProfileModule } from './modules/account-profile/account-profile.module';
@@ -18,7 +19,7 @@ import { AssistantModule } from './modules/assistant/assistant.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath: BACKEND_ENV_FILE,
     }),
 
     TypeOrmModule.forRootAsync({

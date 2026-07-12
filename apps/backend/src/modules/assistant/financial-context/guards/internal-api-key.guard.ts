@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { timingSafeEqual } from 'crypto';
+import { isInternalApiKeyConfigured } from '../../internal-api-key.util';
 
 /**
  * Guard para endpoints INTERNOS servicio-a-servicio (ai-service -> backend).
@@ -29,7 +30,7 @@ export class InternalApiKeyGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     const expected = this.config.get<string>('BACKEND_INTERNAL_API_KEY') ?? '';
-    if (!expected || expected === 'change-me') {
+    if (!isInternalApiKeyConfigured(expected)) {
       this.logger.error(
         'BACKEND_INTERNAL_API_KEY is not configured (empty or placeholder)',
       );

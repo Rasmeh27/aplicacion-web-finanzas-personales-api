@@ -236,6 +236,7 @@ describe('AssistantService (persistence)', () => {
         request_id: 'ai-req-1',
         rag_enabled: false,
         financial_context_enabled: false,
+        investment_context_enabled: false,
         llm_provider: 'mock',
         llm_model: 'mock-llm',
       });
@@ -250,6 +251,7 @@ describe('AssistantService (persistence)', () => {
         request_id: 'ai-req-1',
         rag_enabled: false,
         financial_context_enabled: false,
+        investment_context_enabled: false,
       });
       expect(result.metadata).not.toHaveProperty('llm_provider');
       expect(result.metadata).not.toHaveProperty('allowed_scopes');
@@ -404,6 +406,7 @@ describe('AssistantService (persistence)', () => {
         request_id: 'ai-req-1',
         rag_enabled: false,
         financial_context_enabled: false,
+        investment_context_enabled: false,
       });
     });
 

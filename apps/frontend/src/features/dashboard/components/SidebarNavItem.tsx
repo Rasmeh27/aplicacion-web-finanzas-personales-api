@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { LucideIcon } from 'lucide-react';
+import { Lock, type LucideIcon } from 'lucide-react';
 import { cn } from '@/shared/utils/cn';
 
 type SidebarNavItemProps = {
@@ -8,9 +8,18 @@ type SidebarNavItemProps = {
   icon: LucideIcon;
   active?: boolean;
   badge?: string;
+  /** Función Premium bloqueada para el usuario actual (muestra candado). */
+  locked?: boolean;
 };
 
-export function SidebarNavItem({ href, label, icon: Icon, active = false, badge }: SidebarNavItemProps) {
+export function SidebarNavItem({
+  href,
+  label,
+  icon: Icon,
+  active = false,
+  badge,
+  locked = false,
+}: SidebarNavItemProps) {
   return (
     <Link
       href={href}
@@ -27,7 +36,12 @@ export function SidebarNavItem({ href, label, icon: Icon, active = false, badge 
         )}
       />
       <span className="flex-1 whitespace-nowrap">{label}</span>
-      {badge ? (
+      {locked ? (
+        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+          <Lock className="h-3 w-3" />
+          {badge}
+        </span>
+      ) : badge ? (
         <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
           {badge}
         </span>

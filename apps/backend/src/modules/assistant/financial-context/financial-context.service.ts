@@ -18,6 +18,8 @@ import {
   TransactionType,
 } from '../../movements/entities/transaction.entity';
 import { User } from '../../user/entities/user.entity';
+import { UserPlanService } from '../../subscriptions/user-plan.service';
+import { InvestmentContextService } from '../../us-stock-market-investment/services/investment-context.service';
 import { FinancialContextRequestDto } from './dto/financial-context-request.dto';
 import {
   FinancialBudgetSummaryResponse,
@@ -25,6 +27,7 @@ import {
   FinancialContextResponseDto,
   FinancialGoalSummaryResponse,
   FinancialPeriodResponse,
+  InvestmentContextResponse,
 } from './dto/financial-context-response.dto';
 
 /** Scopes que cada plan puede pedir (mismas reglas que el ai-service). */
@@ -44,6 +47,45 @@ const NO_CATEGORY_LABEL = 'Sin categoría';
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 const round4 = (n: number): number => Math.round(n * 10000) / 10000;
+
+/**
+ * Términos (es/en) que indican que la pregunta necesita contexto del
+ * portafolio. Si el ai-service no envía `question`, se incluye el contexto
+ * (los scopes premium ya señalan la intención).
+ */
+const INVESTMENT_QUESTION_PATTERN = new RegExp(
+  [
+    'inversi',
+    'invert',
+    'invest',
+    'portafolio',
+    'portfolio',
+    'cartera',
+    'accion',
+    'acción',
+    'stock',
+    'etf',
+    'bolsa',
+    'mercado de valores',
+    'ticker',
+    's[ií]mbolo',
+    'dividend',
+    'concentra',
+    'diversifi',
+    'posicion',
+    'posición',
+    'holding',
+    'aporte',
+    'rendimiento',
+    'ganancia',
+    'p[eé]rdida',
+    'gain',
+    'loss',
+    'nasdaq',
+    's&p',
+  ].join('|'),
+  'i',
+);
 
 /**
  * Construye el RESUMEN financiero autorizado de un usuario para el asistente.
@@ -68,6 +110,8 @@ export class FinancialContextService {
     private readonly goalRepo: Repository<FinancialGoal>,
     @InjectRepository(Category)
     private readonly categoryRepo: Repository<Category>,
+    private readonly userPlanService: UserPlanService,
+    private readonly investmentContextService: InvestmentContextService,
   ) {}
 
   async buildFinancialContext(
@@ -113,10 +157,13 @@ export class FinancialContextService {
       );
     }
 
+    const investments = await this.maybeBuildInvestments(dto);
+
     this.logger.log(
       `financial-context built request_id=${dto.request_id} user_id=${dto.user_id} ` +
         `period=${period.from}..${period.to} txs=${summary.transactions_count} ` +
-        `sufficient=${hasSufficientData} duration_ms=${Date.now() - startedAt}`,
+        `sufficient=${hasSufficientData} investments=${Boolean(investments)} ` +
+        `duration_ms=${Date.now() - startedAt}`,
     );
 
     return {
@@ -130,13 +177,63 @@ export class FinancialContextService {
       top_categories: topCategories,
       budgets,
       goals,
+      ...(investments ? { investments } : {}),
       warnings,
       metadata: {
         generated_at: new Date().toISOString(),
         source: 'backend_financial_summary',
         raw_transactions_included: false,
+        investment_context_included: Boolean(investments),
       },
     };
+  }
+
+  /**
+   * Sección premium de inversiones. Se incluye SOLO cuando:
+   *  1. El plan del request es premium y trae los scopes finance_premium y
+   *     user_private (ya validados contra el plan).
+   *  2. El plan REAL del usuario, re-resuelto aquí vía UserPlanService, es
+   *     premium (defensa en profundidad: un basic nunca la recibe aunque el
+   *     request esté manipulado o llegue por prompt injection).
+   *  3. La pregunta necesita contexto del portafolio (o no se envió pregunta).
+   * Nunca lanza: ante cualquier fallo devuelve undefined y el resto del
+   * contexto sigue funcionando.
+   */
+  private async maybeBuildInvestments(
+    dto: FinancialContextRequestDto,
+  ): Promise<InvestmentContextResponse | undefined> {
+    const scopes = new Set(dto.allowed_scopes);
+    if (
+      dto.plan !== 'premium' ||
+      !scopes.has('finance_premium') ||
+      !scopes.has('user_private')
+    ) {
+      return undefined;
+    }
+
+    if (dto.question && !INVESTMENT_QUESTION_PATTERN.test(dto.question)) {
+      return undefined;
+    }
+
+    try {
+      const resolved = await this.userPlanService.resolveUserPlan(dto.user_id);
+      if (resolved.plan !== 'premium') {
+        this.logger.warn(
+          `investment context denied request_id=${dto.request_id}: resolved plan is not premium`,
+        );
+        return undefined;
+      }
+
+      const context = await this.investmentContextService.buildInvestmentContext(
+        dto.user_id,
+      );
+      return context ?? undefined;
+    } catch (error) {
+      this.logger.warn(
+        `investment context skipped request_id=${dto.request_id} reason=${(error as Error)?.name}`,
+      );
+      return undefined;
+    }
   }
 
   /** Rechaza scopes que el plan no permite (defensa en profundidad). */

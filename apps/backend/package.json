@@ -10,6 +10,7 @@
     "test": "jest",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "schema:check": "node scripts/check-assistant-schema.js",
+    "subscription:set-plan": "node scripts/set-user-plan.js",
     "migration:generate": "typeorm migration:generate",
     "migration:run": "typeorm migration:run",
     "migration:revert": "typeorm migration:revert",

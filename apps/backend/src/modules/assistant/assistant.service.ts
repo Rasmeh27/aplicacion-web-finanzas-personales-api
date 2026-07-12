@@ -36,6 +36,7 @@ const STORABLE_METADATA_KEYS = [
   'request_id',
   'rag_enabled',
   'financial_context_enabled',
+  'investment_context_enabled',
   'llm_provider',
   'llm_model',
 ] as const;
@@ -268,6 +269,9 @@ export class AssistantService {
     if (clean.financial_context_enabled === undefined) {
       clean.financial_context_enabled = false;
     }
+    if (clean.investment_context_enabled === undefined) {
+      clean.investment_context_enabled = false;
+    }
     return clean;
   }
 
@@ -279,6 +283,7 @@ export class AssistantService {
       request_id: stored.request_id,
       rag_enabled: stored.rag_enabled ?? false,
       financial_context_enabled: stored.financial_context_enabled ?? false,
+      investment_context_enabled: stored.investment_context_enabled ?? false,
     };
   }
 

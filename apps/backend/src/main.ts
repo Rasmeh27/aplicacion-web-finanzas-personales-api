@@ -4,17 +4,16 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import { existsSync, readFileSync } from 'fs';
-import { join } from 'path';
 import { AppModule } from './app.module';
+import { BACKEND_ENV_FILE } from './config/env-file';
 import { LocalDevModule } from './local-dev.module';
 
 function readLocalEnvFlag(name: string): string | undefined {
   if (process.env[name]) return process.env[name];
 
-  const envPath = join(process.cwd(), '.env');
-  if (!existsSync(envPath)) return undefined;
+  if (!existsSync(BACKEND_ENV_FILE)) return undefined;
 
-  const line = readFileSync(envPath, 'utf8')
+  const line = readFileSync(BACKEND_ENV_FILE, 'utf8')
     .split(/\r?\n/)
     .find((entry) => entry.trim().startsWith(`${name}=`));
 

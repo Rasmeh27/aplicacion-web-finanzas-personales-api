@@ -163,6 +163,32 @@ usuario); `budgets.spent` = gasto del mes del presupuesto en su categoría;
 cuentas bancarias, tarjetas, emails, prompts, JWT, API keys ni `allowed_scopes`.
 El único identificador es `user_id` (el caller ya lo conoce).
 
+### Sección Premium `investments` (opcional)
+
+La respuesta puede incluir una sección `investments` con el **agregado** del
+portafolio del usuario (ver `InvestmentContextResponse` en
+[`dto/financial-context-response.dto.ts`](financial-context/dto/financial-context-response.dto.ts)):
+`portfolioAvailable`, `currency` (USD), `marketDataStatus`
+(`fresh|partial|stale|unavailable|empty`), `asOf`, `summary`
+(costBasis/marketValue/unrealizedGainLoss/unrealizedGainLossPct/dayChange),
+`allocation` (máx. 8 posiciones: symbol/assetType/marketValue/weight),
+`riskIndicators` (topPositionWeight/topThreeWeight/positionCount) y `warnings`.
+`metadata.investment_context_included` indica si se agregó.
+
+Se incluye **solo** cuando se cumplen TODAS:
+
+1. El request trae `plan=premium` **y** los scopes `finance_premium` y
+   `user_private`.
+2. El plan REAL del usuario, re-resuelto aquí con `UserPlanService`, es
+   `premium` (defensa en profundidad: un Basic **nunca** la recibe aunque el
+   request llegue manipulado o por prompt injection).
+3. La `question` necesita contexto del portafolio (heurística de términos de
+   inversión es/en) o no se envió `question`.
+
+Nunca incluye: notas privadas de posiciones, fechas de compra, credenciales de
+broker, órdenes, métodos de pago ni datos de otros usuarios. Ante cualquier
+fallo interno la sección simplemente se omite (el resto del resumen sigue).
+
 **Seguridad de configuración:** `BACKEND_INTERNAL_API_KEY` (backend) **debe
 coincidir** con `BACKEND_INTERNAL_API_KEY` (ai-service). Placeholder en
 `.env.example`; nunca se commitea el valor real.
@@ -170,9 +196,10 @@ coincidir** con `BACKEND_INTERNAL_API_KEY` (ai-service). Placeholder en
 ## Privacidad — qué se guarda y qué no
 
 `sanitizeAiMetadata` filtra la metadata del ai-service. **Se persiste** solo:
-`request_id`, `rag_enabled`, `financial_context_enabled`, `llm_provider`,
-`llm_model`. **Al frontend** se expone un subconjunto aún menor: `request_id`,
-`rag_enabled`, `financial_context_enabled`.
+`request_id`, `rag_enabled`, `financial_context_enabled`,
+`investment_context_enabled`, `llm_provider`, `llm_model`. **Al frontend** se
+expone un subconjunto aún menor: `request_id`, `rag_enabled`,
+`financial_context_enabled`, `investment_context_enabled`.
 
 **Nunca** se guardan ni se exponen: `allowed_scopes`, `user`, `email`, prompts
 internos, errores crudos del proveedor ni API keys. Los logs incluyen solo
