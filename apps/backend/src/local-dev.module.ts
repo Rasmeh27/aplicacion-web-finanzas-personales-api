@@ -183,7 +183,7 @@ class LocalAuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   logout() {
-    return { message: 'Logged out successfully.' };
+    return { message: 'Sesión cerrada correctamente.' };
   }
 }
 

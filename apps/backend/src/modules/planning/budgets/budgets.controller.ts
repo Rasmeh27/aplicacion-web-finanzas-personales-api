@@ -58,6 +58,18 @@ export class BudgetsController {
     );
   }
 
+  @Get('compliance-history')
+  @ApiOperation({
+    summary: 'Historial formal de cumplimiento de presupuestos',
+    description: 'Devuelve periodos mensuales con presupuesto, gasto real, uso y cumplimiento.',
+  })
+  getComplianceHistory(@Request() req: any, @Query('months') months?: string) {
+    return this.service.getComplianceHistory(
+      this.getUserId(req),
+      months !== undefined ? Number(months) : undefined,
+    );
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Obtener un presupuesto por ID' })
   findOne(@Request() req: any, @Param('id', ParseUUIDPipe) id: string) {

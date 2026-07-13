@@ -16,7 +16,18 @@ export const authService = {
     await apiClient.post('/auth/forgot-password', { email });
   },
 
-  async logout(refreshToken: string | null): Promise<void> {
-    await apiClient.post('/auth/logout', { refreshToken });
+  async resetPassword(payload: {
+    code?: string;
+    tokenHash?: string;
+    accessToken?: string;
+    refreshToken?: string;
+    password: string;
+  }): Promise<void> {
+    await apiClient.post('/auth/reset-password', payload);
+  },
+
+  async logout(accessToken: string | null, refreshToken: string | null): Promise<void> {
+    if (!accessToken || !refreshToken) return;
+    await apiClient.post('/auth/logout', { accessToken, refreshToken });
   },
 };

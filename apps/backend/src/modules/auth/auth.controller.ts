@@ -5,6 +5,7 @@ import { Throttle }       from '@nestjs/throttler';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { LogoutDto } from './dto/logout.dto';
+import { MfaEnrollDto, MfaFactorDto, MfaVerifyDto } from './dto/mfa.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -47,6 +48,30 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   logout(@Body() dto: LogoutDto) {
-    return this.authService.logout(dto.refreshToken);
+    return this.authService.logout(dto.accessToken, dto.refreshToken);
+  }
+
+  @Post('mfa/enroll')
+  @HttpCode(HttpStatus.OK)
+  enrollMfa(@Body() dto: MfaEnrollDto) {
+    return this.authService.enrollMfa(dto);
+  }
+
+  @Post('mfa/challenge')
+  @HttpCode(HttpStatus.OK)
+  challengeMfa(@Body() dto: MfaFactorDto) {
+    return this.authService.challengeMfa(dto);
+  }
+
+  @Post('mfa/verify')
+  @HttpCode(HttpStatus.OK)
+  verifyMfa(@Body() dto: MfaVerifyDto) {
+    return this.authService.verifyMfa(dto);
+  }
+
+  @Post('mfa/unenroll')
+  @HttpCode(HttpStatus.OK)
+  unenrollMfa(@Body() dto: MfaFactorDto) {
+    return this.authService.unenrollMfa(dto);
   }
 }

@@ -1,3 +1,14 @@
-import { RefreshTokenDto } from './refresh-token.dto';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsString, MinLength } from 'class-validator';
 
-export class LogoutDto extends RefreshTokenDto {}
+export class LogoutDto {
+  @ApiProperty()
+  @IsString()
+  @MinLength(10)
+  accessToken: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(10)
+  refreshToken: string;
+}

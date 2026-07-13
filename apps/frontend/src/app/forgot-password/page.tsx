@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { zodResolver } from '@hookform/resolvers/zod';
+import axios from 'axios';
 import { AlertCircle, ArrowLeft, CheckCircle2, Mail } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -20,6 +21,7 @@ const recoverySteps = [
 
 export default function ForgotPasswordPage() {
   const [submitState, setSubmitState] = useState<'idle' | 'success' | 'error'>('idle');
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
     register,
@@ -34,12 +36,18 @@ export default function ForgotPasswordPage() {
 
   const onSubmit = async (values: ForgotPasswordFormValues) => {
     setSubmitState('idle');
+    setSubmitError(null);
 
     try {
       await authService.forgotPassword(values.email);
       setSubmitState('success');
-    } catch {
+    } catch (error) {
       setSubmitState('error');
+      if (axios.isAxiosError(error) && error.response?.status === 429) {
+        setSubmitError('Demasiados intentos de recuperación. Espera unos minutos antes de volver a intentarlo.');
+        return;
+      }
+      setSubmitError('No pudimos enviar el enlace ahora mismo. Intenta nuevamente.');
     }
   };
 
@@ -128,7 +136,7 @@ export default function ForgotPasswordPage() {
 
               {submitState === 'error' ? (
                 <div className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-bold text-rose-700">
-                  No pudimos enviar el enlace ahora mismo. Intenta nuevamente.
+                  {submitError}
                 </div>
               ) : null}
 

@@ -1,5 +1,6 @@
 import { ConflictException, ForbiddenException, HttpException, UnauthorizedException } from '@nestjs/common';
 import { AuthError } from '@supabase/supabase-js';
+import { EmailService } from '../../integrations/email/email.service';
 import { SupabaseService } from '../../integrations/supabase/supabase.service';
 import { User } from '../user/entities/user.entity';
 import { UserService } from '../user/user.service';
@@ -9,6 +10,8 @@ describe('AuthService', () => {
   let service: AuthService;
   let userService: jest.Mocked<UserService>;
   let supabase: jest.Mocked<SupabaseService>;
+  let emailService: jest.Mocked<EmailService>;
+  let sessionClient: any;
 
   const profile = {
     id: 'user-1',
@@ -40,6 +43,20 @@ describe('AuthService', () => {
       ),
     } as unknown as jest.Mocked<UserService>;
 
+    sessionClient = {
+      auth: {
+        setSession: jest.fn().mockResolvedValue({ data: { session }, error: null }),
+        updateUser: jest.fn().mockResolvedValue({ data: {}, error: null }),
+        signOut: jest.fn().mockResolvedValue({ error: null }),
+        mfa: {
+          enroll: jest.fn(),
+          challenge: jest.fn(),
+          verify: jest.fn(),
+          unenroll: jest.fn(),
+        },
+      },
+    };
+
     supabase = {
       client: {
         auth: {
@@ -49,9 +66,18 @@ describe('AuthService', () => {
           resetPasswordForEmail: jest.fn(),
         },
       },
+      adminClient: null,
+      createSessionClient: jest.fn(() => sessionClient),
     } as unknown as jest.Mocked<SupabaseService>;
 
-    service = new AuthService(supabase, userService);
+    emailService = {
+      isCustomEmailConfigured: jest.fn().mockReturnValue(false),
+      isSignupConfirmationConfigured: jest.fn().mockReturnValue(false),
+      sendPasswordRecoveryEmail: jest.fn(),
+      sendSignupConfirmationEmail: jest.fn(),
+    } as unknown as jest.Mocked<EmailService>;
+
+    service = new AuthService(supabase, userService, emailService);
   });
 
   describe('register', () => {
@@ -181,6 +207,52 @@ describe('AuthService', () => {
           expect(error.getStatus()).toBe(429);
         });
     });
+
+    it('uses Supabase admin signup link and custom email when configured', async () => {
+      const generateLink = jest.fn().mockResolvedValue({
+        data: {
+          user: supabaseUser,
+          properties: {
+            action_link: 'https://supabase.test/signup-link',
+          },
+        },
+        error: null,
+      });
+      (supabase as any).adminClient = {
+        auth: {
+          admin: {
+            generateLink,
+          },
+        },
+      };
+      emailService.isSignupConfirmationConfigured.mockReturnValue(true);
+      userService.upsertProfile.mockResolvedValue(profile);
+
+      const result = await service.register({
+        email: ' Ana@Example.COM ',
+        password: 'Str0ngP@ssword',
+        fullName: 'Ana Perez',
+      });
+
+      expect(generateLink).toHaveBeenCalledWith({
+        type: 'signup',
+        email: 'ana@example.com',
+        password: 'Str0ngP@ssword',
+        options: {
+          redirectTo: 'http://localhost:3000/auth/email-confirmed',
+          data: {
+            full_name: 'Ana Perez',
+          },
+        },
+      });
+      expect(emailService.sendSignupConfirmationEmail).toHaveBeenCalledWith({
+        to: 'ana@example.com',
+        fullName: 'Ana Perez',
+        confirmationLink: 'https://supabase.test/signup-link',
+      });
+      expect(supabase.client.auth.signUp).not.toHaveBeenCalled();
+      expect(result.status).toBe('email_confirmation_required');
+    });
   });
 
   describe('login', () => {
@@ -237,15 +309,57 @@ describe('AuthService', () => {
 
       await service.forgotPassword(' Ana@Example.COM ');
 
-      expect(supabase.client.auth.resetPasswordForEmail).toHaveBeenCalledWith('ana@example.com');
+      expect(supabase.client.auth.resetPasswordForEmail).toHaveBeenCalledWith(
+        'ana@example.com',
+        { redirectTo: 'http://localhost:3000/auth/reset-password' },
+      );
+    });
+
+    it('uses Supabase admin link generation and custom email when configured', async () => {
+      const generateLink = jest.fn().mockResolvedValue({
+        data: {
+          properties: {
+            action_link: 'https://supabase.test/recovery-link',
+          },
+        },
+        error: null,
+      });
+      (supabase as any).adminClient = {
+        auth: {
+          admin: {
+            generateLink,
+          },
+        },
+      };
+      emailService.isCustomEmailConfigured.mockReturnValue(true);
+
+      await service.forgotPassword(' Ana@Example.COM ');
+
+      expect(generateLink).toHaveBeenCalledWith({
+        type: 'recovery',
+        email: 'ana@example.com',
+        options: {
+          redirectTo: 'http://localhost:3000/auth/reset-password',
+        },
+      });
+      expect(emailService.sendPasswordRecoveryEmail).toHaveBeenCalledWith({
+        to: 'ana@example.com',
+        recoveryLink: 'https://supabase.test/recovery-link',
+      });
+      expect(supabase.client.auth.resetPasswordForEmail).not.toHaveBeenCalled();
     });
   });
 
   describe('logout', () => {
-    it('returns a successful MVP response', async () => {
-      await expect(service.logout('refresh-token')).resolves.toEqual({
-        message: 'Logged out successfully.',
+    it('revokes the current Supabase session', async () => {
+      await expect(service.logout('access-token', 'refresh-token')).resolves.toEqual({
+        message: 'Sesión cerrada correctamente.',
       });
+      expect(sessionClient.auth.setSession).toHaveBeenCalledWith({
+        access_token: 'access-token',
+        refresh_token: 'refresh-token',
+      });
+      expect(sessionClient.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
     });
   });
 });

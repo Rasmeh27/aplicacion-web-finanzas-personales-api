@@ -7,6 +7,7 @@ export type TranslationKey =
   | 'nav.budgets'
   | 'nav.goals'
   | 'nav.debts'
+  | 'nav.news'
   | 'nav.reports'
   | 'nav.aiAssistant'
   | 'nav.profile'
@@ -197,6 +198,7 @@ const es: Dictionary = {
   'nav.budgets': 'Presupuestos',
   'nav.goals': 'Metas',
   'nav.debts': 'Deudas',
+  'nav.news': 'Noticias',
   'nav.reports': 'Reportes',
   'nav.aiAssistant': 'Wallter',
   'nav.profile': 'Perfil',
@@ -423,6 +425,7 @@ const en: Dictionary = {
   'nav.budgets': 'Budgets',
   'nav.goals': 'Goals',
   'nav.debts': 'Debts',
+  'nav.news': 'News',
   'nav.reports': 'Reports',
   'nav.aiAssistant': 'Wallter',
   'nav.profile': 'Profile',
