@@ -14,6 +14,8 @@ import { Category } from '../../planning/entities/category.entity';
 import { FinancialGoal } from '../../planning/entities/financial-goal.entity';
 import { Transaction } from '../../movements/entities/transaction.entity';
 import { User } from '../../user/entities/user.entity';
+import { UserPlanService } from '../../subscriptions/user-plan.service';
+import { InvestmentContextService } from '../../us-stock-market-investment/services/investment-context.service';
 import { FinancialContextRequestDto } from './dto/financial-context-request.dto';
 import { FinancialContextService } from './financial-context.service';
 import { InternalApiKeyGuard } from './guards/internal-api-key.guard';
@@ -46,6 +48,30 @@ function tx(partial: Record<string, unknown>): Transaction {
   } as unknown as Transaction;
 }
 
+const PREMIUM_SCOPES = ['app_usage', 'finance_basic', 'finance_premium', 'user_private'];
+
+function investmentContext(overrides: Record<string, unknown> = {}) {
+  return {
+    portfolioAvailable: true,
+    currency: 'USD',
+    marketDataStatus: 'fresh',
+    asOf: '2026-07-11T15:00:00.000Z',
+    summary: {
+      costBasis: 1500,
+      marketValue: 1650,
+      unrealizedGainLoss: 150,
+      unrealizedGainLossPct: 10,
+      dayChange: 12,
+    },
+    allocation: [
+      { symbol: 'AAPL', assetType: 'stock', marketValue: 900, weight: 0.5455 },
+    ],
+    riskIndicators: { topPositionWeight: 0.5455, topThreeWeight: 1, positionCount: 1 },
+    warnings: [],
+    ...overrides,
+  };
+}
+
 describe('FinancialContextService', () => {
   let service: FinancialContextService;
   let userRepo: { findOne: jest.Mock };
@@ -53,6 +79,8 @@ describe('FinancialContextService', () => {
   let budgetRepo: { find: jest.Mock };
   let goalRepo: { find: jest.Mock };
   let categoryRepo: { find: jest.Mock };
+  let userPlanService: { resolveUserPlan: jest.Mock };
+  let investmentContextService: { buildInvestmentContext: jest.Mock };
 
   beforeEach(async () => {
     userRepo = { findOne: jest.fn() };
@@ -60,13 +88,20 @@ describe('FinancialContextService', () => {
     budgetRepo = { find: jest.fn() };
     goalRepo = { find: jest.fn() };
     categoryRepo = { find: jest.fn() };
+    userPlanService = { resolveUserPlan: jest.fn() };
+    investmentContextService = { buildInvestmentContext: jest.fn() };
 
-    // Defaults: usuario existe, sin datos.
+    // Defaults: usuario existe, sin datos, plan real basic, sin portafolio.
     userRepo.findOne.mockResolvedValue({ id: USER_ID, primaryCurrency: 'DOP' } as never);
     txRepo.find.mockResolvedValue([] as never);
     budgetRepo.find.mockResolvedValue([] as never);
     goalRepo.find.mockResolvedValue([] as never);
     categoryRepo.find.mockResolvedValue([] as never);
+    userPlanService.resolveUserPlan.mockResolvedValue({
+      plan: 'basic',
+      source: 'default',
+    } as never);
+    investmentContextService.buildInvestmentContext.mockResolvedValue(null as never);
 
     const module = await Test.createTestingModule({
       providers: [
@@ -76,6 +111,8 @@ describe('FinancialContextService', () => {
         { provide: getRepositoryToken(Budget), useValue: budgetRepo },
         { provide: getRepositoryToken(FinancialGoal), useValue: goalRepo },
         { provide: getRepositoryToken(Category), useValue: categoryRepo },
+        { provide: UserPlanService, useValue: userPlanService },
+        { provide: InvestmentContextService, useValue: investmentContextService },
       ],
     }).compile();
 
@@ -274,6 +311,162 @@ describe('FinancialContextService', () => {
     const serialized = JSON.stringify(res);
     expect(serialized).not.toContain('merchant');
     expect(serialized).not.toContain('@');
+  });
+
+  describe('sección premium de inversiones', () => {
+    it('premium con scopes premium y pregunta de inversiones -> incluye investments', async () => {
+      userPlanService.resolveUserPlan.mockResolvedValue({
+        plan: 'premium',
+        source: 'subscription',
+        subscription_id: 'sub-1',
+      } as never);
+      investmentContextService.buildInvestmentContext.mockResolvedValue(
+        investmentContext() as never,
+      );
+
+      const res = await service.buildFinancialContext(
+        baseRequest({
+          plan: 'premium',
+          allowed_scopes: PREMIUM_SCOPES,
+          question: 'Analiza mi portafolio',
+        }),
+      );
+
+      expect(res.investments).toBeDefined();
+      expect(res.investments?.summary?.costBasis).toBe(1500);
+      expect(res.metadata.investment_context_included).toBe(true);
+      expect(investmentContextService.buildInvestmentContext).toHaveBeenCalledWith(USER_ID);
+    });
+
+    it('basic NUNCA recibe investments (scopes basic)', async () => {
+      const res = await service.buildFinancialContext(
+        baseRequest({ question: 'Analiza mi portafolio de inversiones' }),
+      );
+      expect(res.investments).toBeUndefined();
+      expect(res.metadata.investment_context_included).toBe(false);
+      expect(investmentContextService.buildInvestmentContext).not.toHaveBeenCalled();
+    });
+
+    it('request manipulado (plan premium) pero plan REAL basic -> sin investments', async () => {
+      // El request dice premium con todos los scopes (p. ej. prompt injection o
+      // caller comprometido), pero UserPlanService resuelve basic.
+      userPlanService.resolveUserPlan.mockResolvedValue({
+        plan: 'basic',
+        source: 'default',
+      } as never);
+
+      const res = await service.buildFinancialContext(
+        baseRequest({
+          plan: 'premium',
+          allowed_scopes: PREMIUM_SCOPES,
+          question: 'Analiza mi portafolio',
+        }),
+      );
+
+      expect(res.investments).toBeUndefined();
+      expect(investmentContextService.buildInvestmentContext).not.toHaveBeenCalled();
+    });
+
+    it('premium sin scope user_private -> sin investments', async () => {
+      userPlanService.resolveUserPlan.mockResolvedValue({
+        plan: 'premium',
+        source: 'subscription',
+      } as never);
+
+      const res = await service.buildFinancialContext(
+        baseRequest({
+          plan: 'premium',
+          allowed_scopes: ['app_usage', 'finance_basic', 'finance_premium'],
+          question: 'Analiza mi portafolio',
+        }),
+      );
+
+      expect(res.investments).toBeUndefined();
+      expect(investmentContextService.buildInvestmentContext).not.toHaveBeenCalled();
+    });
+
+    it('pregunta sin relación con inversiones -> sin investments', async () => {
+      userPlanService.resolveUserPlan.mockResolvedValue({
+        plan: 'premium',
+        source: 'subscription',
+      } as never);
+
+      const res = await service.buildFinancialContext(
+        baseRequest({
+          plan: 'premium',
+          allowed_scopes: PREMIUM_SCOPES,
+          question: '¿Cómo cambio el idioma de la aplicación?',
+        }),
+      );
+
+      expect(res.investments).toBeUndefined();
+      expect(investmentContextService.buildInvestmentContext).not.toHaveBeenCalled();
+    });
+
+    it('sin question -> incluye investments (los scopes premium señalan la intención)', async () => {
+      userPlanService.resolveUserPlan.mockResolvedValue({
+        plan: 'premium',
+        source: 'subscription',
+      } as never);
+      investmentContextService.buildInvestmentContext.mockResolvedValue(
+        investmentContext() as never,
+      );
+
+      const res = await service.buildFinancialContext(
+        baseRequest({
+          plan: 'premium',
+          allowed_scopes: PREMIUM_SCOPES,
+          question: undefined,
+        }),
+      );
+
+      expect(res.investments).toBeDefined();
+    });
+
+    it('fallo del contexto de inversiones no rompe el resto del resumen', async () => {
+      userPlanService.resolveUserPlan.mockResolvedValue({
+        plan: 'premium',
+        source: 'subscription',
+      } as never);
+      investmentContextService.buildInvestmentContext.mockRejectedValue(
+        new Error('market boom') as never,
+      );
+
+      const res = await service.buildFinancialContext(
+        baseRequest({
+          plan: 'premium',
+          allowed_scopes: PREMIUM_SCOPES,
+          question: 'Analiza mi portafolio',
+        }),
+      );
+
+      expect(res.ok).toBe(true);
+      expect(res.investments).toBeUndefined();
+      expect(res.metadata.investment_context_included).toBe(false);
+    });
+
+    it('la sección investments no contiene notas privadas ni user_id', async () => {
+      userPlanService.resolveUserPlan.mockResolvedValue({
+        plan: 'premium',
+        source: 'subscription',
+      } as never);
+      investmentContextService.buildInvestmentContext.mockResolvedValue(
+        investmentContext() as never,
+      );
+
+      const res = await service.buildFinancialContext(
+        baseRequest({
+          plan: 'premium',
+          allowed_scopes: PREMIUM_SCOPES,
+          question: 'Analiza mi portafolio',
+        }),
+      );
+
+      const serialized = JSON.stringify(res.investments);
+      expect(serialized).not.toContain('notes');
+      expect(serialized).not.toContain('purchaseDate');
+      expect(serialized).not.toContain(USER_ID);
+    });
   });
 });
 

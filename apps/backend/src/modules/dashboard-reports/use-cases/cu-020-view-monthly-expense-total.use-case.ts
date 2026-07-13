@@ -37,6 +37,7 @@ export class ViewMonthlyExpenseTotalUseCase {
 
     return {
       periodMonth,
+      // `amount` ya está en moneda base (DOP), convertido al crear/actualizar.
       totalExpense: this.sumAmounts(expenses.map((expense) => expense.amount)),
       currency: 'DOP',
     };

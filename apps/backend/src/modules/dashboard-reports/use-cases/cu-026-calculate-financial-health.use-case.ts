@@ -71,6 +71,7 @@ export class CalculateFinancialHealthUseCase {
       }),
     ]);
 
+    // `amount` ya está en moneda base (DOP), convertido al crear/actualizar.
     const totalIncome = this.sumAmounts(
       movements
         .filter((movement) => movement.type === TransactionType.INCOME)

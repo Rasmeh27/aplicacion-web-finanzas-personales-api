@@ -2,14 +2,19 @@
   "name": "@smartwallet/backend",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "build": "nest build",
     "start": "node dist/main",
+    "start:prod": "node dist/main",
     "dev": "nest start --watch",
     "lint": "eslint \"src/**/*.ts\"",
     "test": "jest",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "schema:check": "node scripts/check-assistant-schema.js",
+    "subscription:set-plan": "node scripts/set-user-plan.js",
     "migration:generate": "typeorm migration:generate",
     "migration:run": "typeorm migration:run",
     "migration:revert": "typeorm migration:revert",

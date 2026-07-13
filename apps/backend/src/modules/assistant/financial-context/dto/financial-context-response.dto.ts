@@ -47,6 +47,38 @@ export interface FinancialGoalSummaryResponse {
   progress_percentage: number;
 }
 
+/**
+ * Sección PREMIUM de inversiones. Solo se incluye cuando el plan resuelto por
+ * el backend es premium, el request trae los scopes finance_premium y
+ * user_private, y la pregunta necesita contexto del portafolio. Contiene solo
+ * agregados: sin notas, sin fechas de compra, sin credenciales de broker.
+ */
+export interface InvestmentContextResponse {
+  portfolioAvailable: boolean;
+  currency: string;
+  marketDataStatus: string;
+  asOf: string | null;
+  summary: {
+    costBasis: number;
+    marketValue: number | null;
+    unrealizedGainLoss: number | null;
+    unrealizedGainLossPct: number | null;
+    dayChange: number | null;
+  } | null;
+  allocation: {
+    symbol: string;
+    assetType: string;
+    marketValue: number | null;
+    weight: number;
+  }[];
+  riskIndicators: {
+    topPositionWeight: number | null;
+    topThreeWeight: number | null;
+    positionCount: number;
+  } | null;
+  warnings: string[];
+}
+
 export interface FinancialContextResponseDto {
   ok: true;
   request_id: string;
@@ -58,10 +90,13 @@ export interface FinancialContextResponseDto {
   top_categories: FinancialCategorySummaryResponse[];
   budgets: FinancialBudgetSummaryResponse[];
   goals: FinancialGoalSummaryResponse[];
+  /** Solo premium + scopes finance_premium/user_private; ausente para basic. */
+  investments?: InvestmentContextResponse;
   warnings: string[];
   metadata: {
     generated_at: string;
     source: 'backend_financial_summary';
     raw_transactions_included: false;
+    investment_context_included?: boolean;
   };
 }

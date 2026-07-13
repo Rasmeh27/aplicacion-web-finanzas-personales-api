@@ -52,6 +52,7 @@ export class ViewMonthlyBalanceUseCase {
     return this.roundMoney(
       movements
         .filter((movement) => movement.type === type)
+        // `amount` ya está en moneda base (DOP).
         .reduce((total, movement) => total + Number(movement.amount), 0),
     );
   }

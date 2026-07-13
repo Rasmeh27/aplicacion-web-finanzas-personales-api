@@ -51,7 +51,10 @@ export class CalculateDebtIncomeRatioUseCase {
       }),
     ]);
 
-    const totalMonthlyIncome = this.sumAmounts(incomes.map((income) => income.amount));
+    // `amount` ya está en moneda base (DOP), convertido al crear/actualizar.
+    const totalMonthlyIncome = this.sumAmounts(
+      incomes.map((income) => income.amount),
+    );
     const totalMinimumDebtPayment = this.sumAmounts(
       debts.map((debt) => debt.minimumPayment),
     );

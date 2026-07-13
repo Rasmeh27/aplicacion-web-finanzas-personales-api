@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
-import { Bot, MessageSquarePlus, X } from 'lucide-react';
+import { Bot, MessageSquarePlus, Sparkles, X } from 'lucide-react';
 import { useWallterStore } from '@/store/slices/wallter.store';
+import { useSubscriptionStore, selectIsPremium } from '@/store/slices/subscription.store';
+import { UpgradeModal } from '@/features/subscription/components/UpgradeModal';
 import { sendAssistantMessage } from '../services/assistant.service';
 import { detectAssistantLeaks } from '../utils/detect-leaks';
 import { AssistantMessageBubble } from './AssistantMessageBubble';
@@ -26,6 +28,18 @@ const SUGGESTED: string[] = [
   '¿Qué puedo hacer para ahorrar más?',
   '¿Qué es un fondo de emergencia?',
   '¿Debo tomar un préstamo para invertir?',
+];
+
+/**
+ * Sugerencias que requieren datos Premium (portafolio). Solo se muestran a
+ * usuarios Premium: un Basic nunca dispara automáticamente prompts que
+ * necesiten datos de inversiones.
+ */
+const SUGGESTED_PREMIUM: string[] = [
+  'Analiza mi portafolio',
+  '¿Qué tan concentradas están mis inversiones?',
+  'Explícame mi ganancia o pérdida',
+  'Simula un aporte mensual de 400 USD',
 ];
 
 const newId = () =>
@@ -92,9 +106,18 @@ export function WallterChatDrawer() {
 
   const [input, setInput] = useState('');
   const [elapsedSec, setElapsedSec] = useState(0);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
+
+  const isPremium = useSubscriptionStore(selectIsPremium);
+  const refreshSubscription = useSubscriptionStore((s) => s.refresh);
+
+  // El plan viene SIEMPRE del backend; se refresca al abrir el drawer.
+  useEffect(() => {
+    if (isOpen) void refreshSubscription();
+  }, [isOpen, refreshSubscription]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -247,7 +270,30 @@ export function WallterChatDrawer() {
                     {question}
                   </button>
                 ))}
+                {isPremium
+                  ? SUGGESTED_PREMIUM.map((question) => (
+                      <button
+                        key={question}
+                        type="button"
+                        onClick={() => void send(question)}
+                        className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 shadow-sm transition hover:border-indigo-400 hover:bg-indigo-100"
+                      >
+                        <Sparkles className="h-3 w-3" />
+                        {question}
+                      </button>
+                    ))
+                  : null}
               </div>
+              {!isPremium ? (
+                <button
+                  type="button"
+                  onClick={() => setUpgradeOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-indigo-300 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50"
+                >
+                  <Sparkles className="h-3 w-3" />
+                  Con Premium, Wallter también analiza tu portafolio de inversiones
+                </button>
+              ) : null}
             </div>
           ) : (
             messages.map((message: ChatMessage) => (
@@ -273,6 +319,8 @@ export function WallterChatDrawer() {
           />
         </div>
       </div>
+
+      <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
     </>
   );
 }

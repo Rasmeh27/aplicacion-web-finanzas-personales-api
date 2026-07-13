@@ -9,6 +9,7 @@ import {
   AiServiceChatRequest,
   AiServiceChatResponse,
 } from '../types/ai-service-contract.types';
+import { isInternalApiKeyConfigured } from '../internal-api-key.util';
 
 /**
  * Thin HTTP client for the internal AI service.
@@ -30,13 +31,29 @@ export class AiServiceClient {
     const baseUrl =
       this.config.get<string>('AI_SERVICE_BASE_URL') ?? 'http://localhost:8001';
     this.baseUrl = baseUrl.replace(/\/+$/, '');
-    this.apiKey = this.config.get<string>('AI_SERVICE_INTERNAL_API_KEY') ?? '';
+    this.apiKey = (this.config.get<string>('AI_SERVICE_INTERNAL_API_KEY') ?? '').trim();
     this.timeoutMs = Number(
       this.config.get<string>('AI_SERVICE_TIMEOUT_MS') ?? 30000,
     );
   }
 
+  /** true solo si hay una API key interna real configurada. */
+  private isApiKeyConfigured(): boolean {
+    return isInternalApiKeyConfigured(this.apiKey);
+  }
+
   async chat(payload: AiServiceChatRequest): Promise<AiServiceChatResponse> {
+    // Falla ANTES de la red con un mensaje inequívoco: sin esta clave el
+    // ai-service SIEMPRE responde 401 y el síntoma (502 "no disponible") no
+    // revela la causa. No se registra el valor de la clave, solo su ausencia.
+    if (!this.isApiKeyConfigured()) {
+      this.logger.error(
+        `AI_SERVICE_INTERNAL_API_KEY is missing or a placeholder (request_id=${payload.request_id}). ` +
+          'Set it in apps/backend/.env to the SAME value as the ai-service .env.',
+      );
+      throw new ServiceUnavailableException('AI service is not configured');
+    }
+
     const url = `${this.baseUrl}/api/v1/chat`;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);

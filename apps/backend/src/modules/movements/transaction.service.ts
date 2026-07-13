@@ -7,10 +7,12 @@ import {
   TransactionClassification,
   TransactionType,
 } from './entities/transaction.entity';
+import { User } from '../user/entities/user.entity';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { FilterTransactionDto } from './dto/filter-transaction.dto';
 import { FilterTransactionsUseCase } from './use-cases/cu-011-filter-movements.use-case';
+import { BASE_CURRENCY, CurrencyConversionService } from './currency-conversion.service';
 
 export interface TransactionSummary {
   year: number;
@@ -31,16 +33,33 @@ export class TransactionService {
   constructor(
     @InjectRepository(Transaction)
     private readonly repo: Repository<Transaction>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
     private readonly filterTransactionsUseCase: FilterTransactionsUseCase,
+    private readonly conversion: CurrencyConversionService,
   ) {}
 
   async create(userId: string, dto: CreateTransactionDto): Promise<Transaction> {
+    const type = CLASSIFICATION_TO_TYPE[dto.classification];
+    const originalCurrency = (dto.currency ?? BASE_CURRENCY).toUpperCase();
+    const baseCurrency = await this.resolveBaseCurrency(userId);
+    // `amountBase` es el valor convertido a la moneda base: se guarda en `amount`.
+    const { amountBase, exchangeRate } = this.conversion.convertToBase({
+      amount: dto.amount,
+      currency: originalCurrency,
+      type,
+      baseCurrency,
+    });
+
     const tx = this.repo.create({
       userId,
       classification: dto.classification,
-      type: CLASSIFICATION_TO_TYPE[dto.classification],
-      amount: dto.amount,
-      currency: (dto.currency ?? 'DOP').toUpperCase(),
+      type,
+      amount: amountBase,
+      currency: baseCurrency,
+      originalAmount: dto.amount,
+      originalCurrency,
+      exchangeRate,
       description: dto.description ?? null,
       notes: dto.notes ?? null,
       categoryId: dto.categoryId ?? null,
@@ -62,7 +81,7 @@ export class TransactionService {
   }
 
   async update(userId: string, id: string, dto: UpdateTransactionDto): Promise<Transaction> {
-    await this.findOne(userId, id);
+    const existing = await this.findOne(userId, id);
 
     const patch: Partial<Transaction> = {};
     if (dto.classification !== undefined) {
@@ -70,8 +89,6 @@ export class TransactionService {
       // La clasificación es la fuente de verdad: el tipo se re-deriva siempre.
       patch.type = CLASSIFICATION_TO_TYPE[dto.classification];
     }
-    if (dto.amount !== undefined) patch.amount = dto.amount;
-    if (dto.currency !== undefined) patch.currency = dto.currency.toUpperCase();
     if (dto.description !== undefined) patch.description = dto.description;
     if (dto.notes !== undefined) patch.notes = dto.notes;
     if (dto.categoryId !== undefined) patch.categoryId = dto.categoryId;
@@ -81,6 +98,34 @@ export class TransactionService {
       patch.recurrenceFrequency = dto.isRecurring ? dto.recurrenceFrequency ?? null : null;
     } else if (dto.recurrenceFrequency !== undefined) {
       patch.recurrenceFrequency = dto.recurrenceFrequency;
+    }
+
+    // Si cambia monto, moneda o tipo (por clasificación) se reconvierte: `amount`
+    // queda en moneda base y se conserva lo ingresado en original_amount/currency.
+    // dto.amount/dto.currency vienen en la moneda que ingresó el usuario.
+    if (
+      dto.amount !== undefined ||
+      dto.currency !== undefined ||
+      dto.classification !== undefined
+    ) {
+      const originalAmount =
+        dto.amount ?? existing.originalAmount ?? existing.amount;
+      const originalCurrency = (
+        dto.currency ?? existing.originalCurrency ?? existing.currency
+      ).toUpperCase();
+      const type = patch.type ?? existing.type;
+      const baseCurrency = await this.resolveBaseCurrency(userId);
+      const { amountBase, exchangeRate } = this.conversion.convertToBase({
+        amount: originalAmount,
+        currency: originalCurrency,
+        type,
+        baseCurrency,
+      });
+      patch.amount = amountBase;
+      patch.currency = baseCurrency;
+      patch.originalAmount = originalAmount;
+      patch.originalCurrency = originalCurrency;
+      patch.exchangeRate = exchangeRate;
     }
 
     if (Object.keys(patch).length > 0) {
@@ -113,6 +158,7 @@ export class TransactionService {
       where: { userId, date: Between(start, end) },
     });
 
+    // `amount` ya está en moneda base (DOP), convertido al crear/actualizar.
     const sumBy = (classification: TransactionClassification) =>
       txs
         .filter((tx) => tx.classification === classification)
@@ -150,6 +196,15 @@ export class TransactionService {
       savingsRate: totalIncome > 0 ? this.round2((balance / totalIncome) * 100) : 0,
       transactionCount: txs.length,
     };
+  }
+
+  /** Moneda base del usuario (moneda principal del perfil; DOP por defecto). */
+  private async resolveBaseCurrency(userId: string): Promise<string> {
+    const user = await this.userRepo.findOne({
+      where: { id: userId },
+      select: ['id', 'primaryCurrency'],
+    });
+    return (user?.primaryCurrency || BASE_CURRENCY).toUpperCase();
   }
 
   private toPositiveInt(value?: number): number | undefined {

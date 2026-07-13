@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import {
@@ -7,7 +8,9 @@ import {
   TransactionClassification,
   TransactionType,
 } from './entities/transaction.entity';
+import { User } from '../user/entities/user.entity';
 import { TransactionService } from './transaction.service';
+import { CurrencyConversionService } from './currency-conversion.service';
 import { FilterTransactionsUseCase } from './use-cases/cu-011-filter-movements.use-case';
 
 describe('TransactionService - clasificación y resumen', () => {
@@ -20,6 +23,7 @@ describe('TransactionService - clasificación y resumen', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TransactionService,
+        CurrencyConversionService,
         FilterTransactionsUseCase,
         {
           provide: getRepositoryToken(Transaction),
@@ -32,6 +36,16 @@ describe('TransactionService - clasificación y resumen', () => {
             update: jest.fn(),
             delete: jest.fn(),
           },
+        },
+        {
+          provide: getRepositoryToken(User),
+          useValue: {
+            findOne: jest.fn(async () => ({ id: userId, primaryCurrency: 'DOP' })),
+          },
+        },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn(() => undefined) },
         },
       ],
     }).compile();
@@ -54,19 +68,24 @@ describe('TransactionService - clasificación y resumen', () => {
       );
     });
 
-    it('normaliza la moneda a mayúsculas y usa DOP por defecto', async () => {
+    it('normaliza la moneda ingresada a mayúsculas y deja `currency` en base (DOP)', async () => {
       await service.create(userId, {
         classification: TransactionClassification.REGULAR_INCOME,
         amount: 100,
         currency: 'usd',
       } as any);
-      expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ currency: 'USD' }));
+      // `amount`/`currency` quedan en base; lo ingresado va a original_*.
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ currency: 'DOP', originalCurrency: 'USD' }),
+      );
 
       await service.create(userId, {
         classification: TransactionClassification.REGULAR_INCOME,
         amount: 100,
       } as any);
-      expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ currency: 'DOP' }));
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ currency: 'DOP', originalCurrency: 'DOP' }),
+      );
     });
   });
 
