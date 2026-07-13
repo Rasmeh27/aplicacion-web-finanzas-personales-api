@@ -252,6 +252,24 @@ class LocalCategoryController {
   }
 }
 
+// Conversión a moneda base (DOP) para el mock local, espejo de
+// CurrencyConversionService: compra para ingresos, venta para gastos (BCRD).
+const LOCAL_USD_BUY = Number(process.env.EXCHANGE_RATE_USD_BUY) || 58.36;
+const LOCAL_USD_SELL = Number(process.env.EXCHANGE_RATE_USD_SELL) || 58.95;
+
+function convertToBaseLocal(amount: number, currency: string, type: string) {
+  const cur = (currency ?? 'DOP').toUpperCase();
+  let exchangeRate = 1;
+  if (cur === 'USD') exchangeRate = type === 'income' ? LOCAL_USD_BUY : LOCAL_USD_SELL;
+  return {
+    baseCurrency: 'DOP',
+    exchangeRate,
+    amountBase: Math.round(Number(amount) * exchangeRate * 100) / 100,
+  };
+}
+
+const baseAmountLocal = (tx: any) => Number(tx.amountBase ?? tx.amount);
+
 @Controller('transactions')
 class LocalTransactionsController {
   @Get()
@@ -264,19 +282,26 @@ class LocalTransactionsController {
 
   @Get('summary')
   summary() {
-    const totalIncome = transactions.filter((tx) => tx.type === 'income').reduce((sum, tx) => sum + Number(tx.amount), 0);
-    const totalExpenses = transactions.filter((tx) => tx.type === 'expense').reduce((sum, tx) => sum + Number(tx.amount), 0);
+    const sumByClassification = (classification: string) =>
+      transactions
+        .filter((tx) => tx.classification === classification)
+        .reduce((sum, tx) => sum + baseAmountLocal(tx), 0);
+
+    const totalIncome = transactions.filter((tx) => tx.type === 'income').reduce((sum, tx) => sum + baseAmountLocal(tx), 0);
+    const totalExpenses = transactions.filter((tx) => tx.type === 'expense').reduce((sum, tx) => sum + baseAmountLocal(tx), 0);
+    const totalExtraIncome = sumByClassification('extra_income');
+    const totalFixedExpenses = sumByClassification('fixed_expense');
     return {
       year: 2026,
       month: 7,
       totalIncome,
-      totalRegularIncome: totalIncome,
-      totalExtraIncome: 0,
+      totalRegularIncome: totalIncome - totalExtraIncome,
+      totalExtraIncome,
       totalExpenses,
-      totalFixedExpenses: 25000,
-      totalVariableExpenses: totalExpenses - 25000,
+      totalFixedExpenses,
+      totalVariableExpenses: totalExpenses - totalFixedExpenses,
       balance: totalIncome - totalExpenses,
-      savingsRate: Math.round(((totalIncome - totalExpenses) / totalIncome) * 100),
+      savingsRate: totalIncome > 0 ? Math.round(((totalIncome - totalExpenses) / totalIncome) * 100) : 0,
       transactionCount: transactions.length,
     };
   }
@@ -284,13 +309,19 @@ class LocalTransactionsController {
   @Post()
   create(@Body() body: any) {
     const category = categories.find((item) => item.id === body.categoryId) ?? null;
+    const type = ['regular_income', 'extra_income'].includes(body.classification) ? 'income' : 'expense';
+    const currency = (body.currency ?? 'DOP').toUpperCase();
+    const { amountBase, exchangeRate, baseCurrency } = convertToBaseLocal(body.amount, currency, type);
     const transaction = {
       id: randomUUID(),
       userId,
-      type: ['regular_income', 'extra_income'].includes(body.classification) ? 'income' : 'expense',
+      type,
       classification: body.classification,
       amount: body.amount,
-      currency: body.currency ?? 'DOP',
+      currency,
+      amountBase,
+      exchangeRate,
+      baseCurrency,
       description: body.description ?? null,
       notes: body.notes ?? null,
       date: body.date ?? new Date().toISOString().slice(0, 10),

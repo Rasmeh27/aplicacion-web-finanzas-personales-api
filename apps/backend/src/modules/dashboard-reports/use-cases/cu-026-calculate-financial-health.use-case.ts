@@ -71,15 +71,16 @@ export class CalculateFinancialHealthUseCase {
       }),
     ]);
 
+    // Ingresos/gastos en moneda base (DOP); fallback a `amount` sin convertir.
     const totalIncome = this.sumAmounts(
       movements
         .filter((movement) => movement.type === TransactionType.INCOME)
-        .map((movement) => movement.amount),
+        .map((movement) => movement.amountBase ?? movement.amount),
     );
     const totalExpense = this.sumAmounts(
       movements
         .filter((movement) => movement.type === TransactionType.EXPENSE)
-        .map((movement) => movement.amount),
+        .map((movement) => movement.amountBase ?? movement.amount),
     );
     const monthlyBalance = this.roundMoney(totalIncome - totalExpense);
     const savingsPercentage =
