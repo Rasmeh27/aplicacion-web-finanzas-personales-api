@@ -25,7 +25,7 @@ const REGISTER_PROFILE_DEFAULTS = {
 };
 
 const EMAIL_CONFIRMATION_REQUIRED_MESSAGE =
-  'Cuenta creada. Revisa tu correo para confirmar tu cuenta antes de iniciar sesiÃ³n.';
+  'Cuenta creada. Revisa tu correo para confirmar tu cuenta antes de iniciar sesión.';
 
 type AuthUserResponse = {
   id: string;
@@ -139,7 +139,7 @@ export class AuthService {
       if (this.isEmailNotConfirmedError(error)) {
         throw new ForbiddenException({
           code: 'email_not_confirmed',
-          message: 'Debes confirmar tu correo antes de iniciar sesiÃ³n.',
+          message: 'Debes confirmar tu correo antes de iniciar sesión.',
         });
       }
 
@@ -186,7 +186,7 @@ export class AuthService {
 
       const recoveryLink = this.buildPasswordRecoveryLink(data.properties?.hashed_token, data.properties?.action_link);
       if (!recoveryLink) {
-        throw new BadRequestException('No pudimos generar el enlace de recuperaciÃ³n.');
+        throw new BadRequestException('No pudimos generar el enlace de recuperación.');
       }
 
       await this.emailService.sendPasswordRecoveryEmail({
@@ -194,7 +194,7 @@ export class AuthService {
         recoveryLink,
       });
 
-      return { message: 'Si el correo existe, enviaremos un enlace para restablecer la contraseÃ±a.' };
+      return { message: 'Si el correo existe, enviaremos un enlace para restablecer la contraseña.' };
     }
 
     this.logger.warn('Custom recovery email is not fully configured; falling back to Supabase Auth email delivery.');
@@ -217,7 +217,7 @@ export class AuthService {
       throw new BadRequestException(error.message);
     }
 
-    return { message: 'Si el correo existe, enviaremos un enlace para restablecer la contraseÃ±a.' };
+    return { message: 'Si el correo existe, enviaremos un enlace para restablecer la contraseña.' };
   }
 
   private async registerWithCustomConfirmationEmail(email: string, password: string, fullName: string) {
@@ -302,7 +302,7 @@ export class AuthService {
       throw new BadRequestException(error.message);
     }
 
-    return { message: 'SesiÃ³n cerrada correctamente.' };
+    return { message: 'Sesión cerrada correctamente.' };
   }
 
   async enrollMfa(dto: MfaEnrollDto) {
@@ -391,7 +391,7 @@ export class AuthService {
     });
 
     if (error) {
-      throw new UnauthorizedException('La sesiÃ³n ya no es vÃ¡lida.');
+      throw new UnauthorizedException('La sesión ya no es válida.');
     }
 
     return client;
