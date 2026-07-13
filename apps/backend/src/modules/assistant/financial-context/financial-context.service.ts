@@ -132,7 +132,7 @@ export class FinancialContextService {
 
     const transactions = await this.transactionRepo.find({
       where: { userId: dto.user_id, date: Between(period.from, period.to) },
-      select: ['amount', 'amountBase', 'type', 'classification', 'categoryId', 'date'],
+      select: ['amount', 'type', 'classification', 'categoryId', 'date'],
     });
 
     const warnings: string[] = [];
@@ -313,8 +313,8 @@ export class FinancialContextService {
     let classified = 0;
 
     for (const tx of transactions) {
-      // Monto en moneda base (DOP); fallback a `amount` para filas sin convertir.
-      const amount = Number(tx.amountBase ?? tx.amount) || 0;
+      // `amount` ya está en moneda base (DOP), convertido al crear/actualizar.
+      const amount = Number(tx.amount) || 0;
       if (tx.type === TransactionType.INCOME) income += amount;
       if (tx.type === TransactionType.EXPENSE) expense += amount;
       if (tx.classification === TransactionClassification.FIXED_EXPENSE) {
@@ -366,10 +366,7 @@ export class FinancialContextService {
     for (const tx of transactions) {
       if (tx.type !== TransactionType.EXPENSE) continue;
       const key = tx.categoryId ?? null;
-      byCategory.set(
-        key,
-        (byCategory.get(key) ?? 0) + (Number(tx.amountBase ?? tx.amount) || 0),
-      );
+      byCategory.set(key, (byCategory.get(key) ?? 0) + (Number(tx.amount) || 0));
     }
     if (byCategory.size === 0) return [];
 

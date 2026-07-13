@@ -56,28 +56,30 @@ export class Transaction {
   })
   classification: TransactionClassification;
 
-  @Column({ type: 'decimal', precision: 12, scale: 2 })
+  /**
+   * Monto en la moneda base del usuario (DOP). Es el valor YA convertido y es lo
+   * que suman/muestran los reportes y el panel. Si el usuario ingresó en otra
+   * moneda, el monto y la moneda originales quedan en `originalAmount`/
+   * `originalCurrency`.
+   */
+  @Column({ type: 'decimal', precision: 14, scale: 2 })
   amount: number;
 
+  /** Moneda de `amount` (moneda base del usuario). */
   @Column({ default: 'DOP' })
   currency: string;
 
-  /**
-   * Monto convertido a la moneda base del usuario (`baseCurrency`), calculado al
-   * crear/actualizar. Los reportes suman SIEMPRE este campo para no mezclar
-   * monedas. Nullable por compatibilidad con filas antiguas: los agregados usan
-   * `amountBase ?? amount` como fallback.
-   */
-  @Column({ name: 'amount_base', type: 'decimal', precision: 14, scale: 2, nullable: true })
-  amountBase: number | null;
+  /** Monto tal como lo ingresó el usuario (antes de convertir). */
+  @Column({ name: 'original_amount', type: 'decimal', precision: 14, scale: 2, nullable: true })
+  originalAmount: number | null;
 
-  /** Tasa aplicada (unidades de `baseCurrency` por 1 unidad de `currency`). */
+  /** Moneda que ingresó el usuario (p. ej. USD). */
+  @Column({ name: 'original_currency', length: 3, nullable: true })
+  originalCurrency: string | null;
+
+  /** Tasa aplicada al convertir de `originalCurrency` a `currency` (base). */
   @Column({ name: 'exchange_rate', type: 'decimal', precision: 18, scale: 6, default: 1 })
   exchangeRate: number;
-
-  /** Moneda en la que está expresado `amountBase` (moneda base del usuario). */
-  @Column({ name: 'base_currency', length: 3, default: 'DOP' })
-  baseCurrency: string;
 
   @Column({ type: 'text', nullable: true })
   description: string;

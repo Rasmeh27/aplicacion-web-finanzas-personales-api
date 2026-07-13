@@ -39,9 +39,9 @@ describe('TransactionService - Filtering (CU-011)', () => {
     classification: TransactionClassification.VARIABLE_EXPENSE,
     amount: 50,
     currency: 'DOP',
-    amountBase: 50,
+    originalAmount: 50,
+    originalCurrency: 'DOP',
     exchangeRate: 1,
-    baseCurrency: 'DOP',
     description: 'Test transaction',
     notes: null as any,
     date: '2026-05-15',
@@ -359,7 +359,7 @@ describe('TransactionService - Filtering (CU-011)', () => {
   });
 
   describe('create - Conversión de moneda (BCRD)', () => {
-    it('convierte un INGRESO en USD a DOP con la tasa de compra (58.36)', async () => {
+    it('guarda un INGRESO en USD ya convertido a DOP con la tasa de compra (58.36)', async () => {
       const created = await service.create(userId, {
         classification: TransactionClassification.EXTRA_INCOME,
         amount: 2400,
@@ -367,14 +367,16 @@ describe('TransactionService - Filtering (CU-011)', () => {
         description: 'Tarjeta de Credito GOLD en dolar',
       } as any);
 
-      expect(created.currency).toBe('USD');
-      expect(created.baseCurrency).toBe('DOP');
+      // `amount` queda en moneda base (DOP) y se preserva lo ingresado.
+      expect(created.amount).toBe(140064); // 2400 * 58.36
+      expect(created.currency).toBe('DOP');
+      expect(created.originalAmount).toBe(2400);
+      expect(created.originalCurrency).toBe('USD');
       expect(created.exchangeRate).toBe(58.36);
-      expect(created.amountBase).toBe(140064); // 2400 * 58.36
       expect(created.type).toBe(TransactionType.INCOME);
     });
 
-    it('convierte un GASTO en USD a DOP con la tasa de venta (58.95)', async () => {
+    it('guarda un GASTO en USD ya convertido a DOP con la tasa de venta (58.95)', async () => {
       const created = await service.create(userId, {
         classification: TransactionClassification.VARIABLE_EXPENSE,
         amount: 100,
@@ -382,8 +384,11 @@ describe('TransactionService - Filtering (CU-011)', () => {
         description: 'Compra en dólares',
       } as any);
 
+      expect(created.amount).toBe(5895); // 100 * 58.95
+      expect(created.currency).toBe('DOP');
+      expect(created.originalAmount).toBe(100);
+      expect(created.originalCurrency).toBe('USD');
       expect(created.exchangeRate).toBe(58.95);
-      expect(created.amountBase).toBe(5895); // 100 * 58.95
       expect(created.type).toBe(TransactionType.EXPENSE);
     });
 
@@ -395,9 +400,11 @@ describe('TransactionService - Filtering (CU-011)', () => {
         description: 'Salario',
       } as any);
 
+      expect(created.amount).toBe(50000);
+      expect(created.currency).toBe('DOP');
+      expect(created.originalAmount).toBe(50000);
+      expect(created.originalCurrency).toBe('DOP');
       expect(created.exchangeRate).toBe(1);
-      expect(created.amountBase).toBe(50000);
-      expect(created.baseCurrency).toBe('DOP');
     });
 
     it('resuelve la moneda base desde el perfil del usuario', async () => {
@@ -412,13 +419,14 @@ describe('TransactionService - Filtering (CU-011)', () => {
   });
 
   describe('getMonthlySummary - Conversión de moneda', () => {
-    it('suma amountBase (convertido) y no el monto en crudo', async () => {
+    it('suma el `amount` ya convertido a moneda base', async () => {
       const usdIncome = mockTransaction({
         type: TransactionType.INCOME,
         classification: TransactionClassification.EXTRA_INCOME,
-        amount: 2400,
-        currency: 'USD',
-        amountBase: 140064, // 2400 * 58.36
+        amount: 140064, // 2400 USD ya convertido con 58.36
+        currency: 'DOP',
+        originalAmount: 2400,
+        originalCurrency: 'USD',
         exchangeRate: 58.36,
       });
       jest.spyOn(repo, 'find').mockResolvedValue([usdIncome]);
@@ -427,20 +435,6 @@ describe('TransactionService - Filtering (CU-011)', () => {
 
       expect(summary.totalExtraIncome).toBe(140064);
       expect(summary.totalIncome).toBe(140064);
-    });
-
-    it('cae a amount cuando amountBase es null (fila antigua sin convertir)', async () => {
-      const legacy = mockTransaction({
-        type: TransactionType.INCOME,
-        classification: TransactionClassification.REGULAR_INCOME,
-        amount: 5000,
-        amountBase: null,
-      });
-      jest.spyOn(repo, 'find').mockResolvedValue([legacy]);
-
-      const summary = await service.getMonthlySummary(userId, 2026, 7);
-
-      expect(summary.totalRegularIncome).toBe(5000);
     });
   });
 });

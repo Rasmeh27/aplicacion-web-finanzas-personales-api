@@ -44,10 +44,8 @@ export class ViewExpensesByCategoryUseCase {
       relations: ['category'],
     });
 
-    // Se suma el monto ya convertido a moneda base (DOP); fallback a `amount`.
-    const totalExpense = this.sumAmounts(
-      expenses.map((expense) => expense.amountBase ?? expense.amount),
-    );
+    // `amount` ya está en moneda base (DOP), convertido al crear/actualizar.
+    const totalExpense = this.sumAmounts(expenses.map((expense) => expense.amount));
 
     return {
       periodMonth,
@@ -71,7 +69,7 @@ export class ViewExpensesByCategoryUseCase {
       };
 
       current.totalExpense = this.roundMoney(
-        current.totalExpense + Number(expense.amountBase ?? expense.amount),
+        current.totalExpense + Number(expense.amount),
       );
       acc.set(key, current);
       return acc;

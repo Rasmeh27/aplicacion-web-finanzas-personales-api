@@ -14,6 +14,10 @@ out/
 .env
 .env.local
 .env.*.local
+# Never track .env backups/dumps (may contain real secrets)
+.env.backup*
+.env.*.backup*
+*.env.backup*
 
 # Logs
 *.log

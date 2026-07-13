@@ -4,6 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { SupabaseModule } from './integrations/supabase/supabase.module';
 import { BACKEND_ENV_FILE } from './config/env-file';
+import { validateEnv } from './config/env.validation';
+import { HealthModule } from './modules/health/health.module';
 
 // Modulos principales del proyecto
 import { AccountProfileModule } from './modules/account-profile/account-profile.module';
@@ -20,6 +22,7 @@ import { AssistantModule } from './modules/assistant/assistant.module';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: BACKEND_ENV_FILE,
+      validate: validateEnv,
     }),
 
     TypeOrmModule.forRootAsync({
@@ -42,6 +45,7 @@ import { AssistantModule } from './modules/assistant/assistant.module';
 
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     SupabaseModule,
+    HealthModule,
 
     AccountProfileModule,
     MovementsModule,

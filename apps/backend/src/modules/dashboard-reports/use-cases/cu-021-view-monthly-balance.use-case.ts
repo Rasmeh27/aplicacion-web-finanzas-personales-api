@@ -52,8 +52,8 @@ export class ViewMonthlyBalanceUseCase {
     return this.roundMoney(
       movements
         .filter((movement) => movement.type === type)
-        // Monto en moneda base (DOP); fallback a `amount` para filas sin convertir.
-        .reduce((total, movement) => total + Number(movement.amountBase ?? movement.amount), 0),
+        // `amount` ya está en moneda base (DOP).
+        .reduce((total, movement) => total + Number(movement.amount), 0),
     );
   }
 

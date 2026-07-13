@@ -268,7 +268,8 @@ function convertToBaseLocal(amount: number, currency: string, type: string) {
   };
 }
 
-const baseAmountLocal = (tx: any) => Number(tx.amountBase ?? tx.amount);
+// `amount` ya está en moneda base (DOP) tras la conversión al crear.
+const baseAmountLocal = (tx: any) => Number(tx.amount);
 
 @Controller('transactions')
 class LocalTransactionsController {
@@ -310,18 +311,18 @@ class LocalTransactionsController {
   create(@Body() body: any) {
     const category = categories.find((item) => item.id === body.categoryId) ?? null;
     const type = ['regular_income', 'extra_income'].includes(body.classification) ? 'income' : 'expense';
-    const currency = (body.currency ?? 'DOP').toUpperCase();
-    const { amountBase, exchangeRate, baseCurrency } = convertToBaseLocal(body.amount, currency, type);
+    const originalCurrency = (body.currency ?? 'DOP').toUpperCase();
+    const { amountBase, exchangeRate, baseCurrency } = convertToBaseLocal(body.amount, originalCurrency, type);
     const transaction = {
       id: randomUUID(),
       userId,
       type,
       classification: body.classification,
-      amount: body.amount,
-      currency,
-      amountBase,
+      amount: amountBase,
+      currency: baseCurrency,
+      originalAmount: body.amount,
+      originalCurrency,
       exchangeRate,
-      baseCurrency,
       description: body.description ?? null,
       notes: body.notes ?? null,
       date: body.date ?? new Date().toISOString().slice(0, 10),

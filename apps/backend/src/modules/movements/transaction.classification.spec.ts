@@ -68,19 +68,24 @@ describe('TransactionService - clasificación y resumen', () => {
       );
     });
 
-    it('normaliza la moneda a mayúsculas y usa DOP por defecto', async () => {
+    it('normaliza la moneda ingresada a mayúsculas y deja `currency` en base (DOP)', async () => {
       await service.create(userId, {
         classification: TransactionClassification.REGULAR_INCOME,
         amount: 100,
         currency: 'usd',
       } as any);
-      expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ currency: 'USD' }));
+      // `amount`/`currency` quedan en base; lo ingresado va a original_*.
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ currency: 'DOP', originalCurrency: 'USD' }),
+      );
 
       await service.create(userId, {
         classification: TransactionClassification.REGULAR_INCOME,
         amount: 100,
       } as any);
-      expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ currency: 'DOP' }));
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ currency: 'DOP', originalCurrency: 'DOP' }),
+      );
     });
   });
 

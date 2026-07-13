@@ -41,11 +41,12 @@ export class TransactionService {
 
   async create(userId: string, dto: CreateTransactionDto): Promise<Transaction> {
     const type = CLASSIFICATION_TO_TYPE[dto.classification];
-    const currency = (dto.currency ?? BASE_CURRENCY).toUpperCase();
+    const originalCurrency = (dto.currency ?? BASE_CURRENCY).toUpperCase();
     const baseCurrency = await this.resolveBaseCurrency(userId);
+    // `amountBase` es el valor convertido a la moneda base: se guarda en `amount`.
     const { amountBase, exchangeRate } = this.conversion.convertToBase({
       amount: dto.amount,
-      currency,
+      currency: originalCurrency,
       type,
       baseCurrency,
     });
@@ -54,11 +55,11 @@ export class TransactionService {
       userId,
       classification: dto.classification,
       type,
-      amount: dto.amount,
-      currency,
-      amountBase,
+      amount: amountBase,
+      currency: baseCurrency,
+      originalAmount: dto.amount,
+      originalCurrency,
       exchangeRate,
-      baseCurrency,
       description: dto.description ?? null,
       notes: dto.notes ?? null,
       categoryId: dto.categoryId ?? null,
@@ -88,8 +89,6 @@ export class TransactionService {
       // La clasificación es la fuente de verdad: el tipo se re-deriva siempre.
       patch.type = CLASSIFICATION_TO_TYPE[dto.classification];
     }
-    if (dto.amount !== undefined) patch.amount = dto.amount;
-    if (dto.currency !== undefined) patch.currency = dto.currency.toUpperCase();
     if (dto.description !== undefined) patch.description = dto.description;
     if (dto.notes !== undefined) patch.notes = dto.notes;
     if (dto.categoryId !== undefined) patch.categoryId = dto.categoryId;
@@ -101,24 +100,32 @@ export class TransactionService {
       patch.recurrenceFrequency = dto.recurrenceFrequency;
     }
 
-    // Si cambia monto, moneda o tipo (por clasificación), se recalcula la
-    // conversión a moneda base para mantener consistentes los reportes.
+    // Si cambia monto, moneda o tipo (por clasificación) se reconvierte: `amount`
+    // queda en moneda base y se conserva lo ingresado en original_amount/currency.
+    // dto.amount/dto.currency vienen en la moneda que ingresó el usuario.
     if (
       dto.amount !== undefined ||
       dto.currency !== undefined ||
       dto.classification !== undefined
     ) {
-      const baseCurrency =
-        existing.baseCurrency || (await this.resolveBaseCurrency(userId));
+      const originalAmount =
+        dto.amount ?? existing.originalAmount ?? existing.amount;
+      const originalCurrency = (
+        dto.currency ?? existing.originalCurrency ?? existing.currency
+      ).toUpperCase();
+      const type = patch.type ?? existing.type;
+      const baseCurrency = await this.resolveBaseCurrency(userId);
       const { amountBase, exchangeRate } = this.conversion.convertToBase({
-        amount: patch.amount ?? existing.amount,
-        currency: patch.currency ?? existing.currency,
-        type: patch.type ?? existing.type,
+        amount: originalAmount,
+        currency: originalCurrency,
+        type,
         baseCurrency,
       });
-      patch.amountBase = amountBase;
+      patch.amount = amountBase;
+      patch.currency = baseCurrency;
+      patch.originalAmount = originalAmount;
+      patch.originalCurrency = originalCurrency;
       patch.exchangeRate = exchangeRate;
-      patch.baseCurrency = baseCurrency;
     }
 
     if (Object.keys(patch).length > 0) {
@@ -151,14 +158,11 @@ export class TransactionService {
       where: { userId, date: Between(start, end) },
     });
 
-    // Se suma SIEMPRE el monto en moneda base (amountBase). Fallback a `amount`
-    // solo para filas antiguas aún sin convertir (previas a la migración).
-    const baseAmount = (tx: Transaction) => Number(tx.amountBase ?? tx.amount);
-
+    // `amount` ya está en moneda base (DOP), convertido al crear/actualizar.
     const sumBy = (classification: TransactionClassification) =>
       txs
         .filter((tx) => tx.classification === classification)
-        .reduce((acc, tx) => acc + baseAmount(tx), 0);
+        .reduce((acc, tx) => acc + Number(tx.amount), 0);
 
     const totalRegularIncome = sumBy(TransactionClassification.REGULAR_INCOME);
     const totalExtraIncome = sumBy(TransactionClassification.EXTRA_INCOME);
@@ -168,10 +172,10 @@ export class TransactionService {
     // Fallback por compatibilidad: rows antiguas sin clasificación se suman por type.
     const legacyIncome = txs
       .filter((tx) => !tx.classification && tx.type === TransactionType.INCOME)
-      .reduce((acc, tx) => acc + baseAmount(tx), 0);
+      .reduce((acc, tx) => acc + Number(tx.amount), 0);
     const legacyExpense = txs
       .filter((tx) => !tx.classification && tx.type === TransactionType.EXPENSE)
-      .reduce((acc, tx) => acc + baseAmount(tx), 0);
+      .reduce((acc, tx) => acc + Number(tx.amount), 0);
 
     const totalIncome = this.round2(totalRegularIncome + totalExtraIncome + legacyIncome);
     const totalExpenses = this.round2(

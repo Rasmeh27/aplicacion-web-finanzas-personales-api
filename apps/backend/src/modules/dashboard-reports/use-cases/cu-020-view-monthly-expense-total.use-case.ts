@@ -37,11 +37,8 @@ export class ViewMonthlyExpenseTotalUseCase {
 
     return {
       periodMonth,
-      // Se suma el monto ya convertido a moneda base (DOP); fallback a `amount`
-      // para filas antiguas aún sin convertir.
-      totalExpense: this.sumAmounts(
-        expenses.map((expense) => expense.amountBase ?? expense.amount),
-      ),
+      // `amount` ya está en moneda base (DOP), convertido al crear/actualizar.
+      totalExpense: this.sumAmounts(expenses.map((expense) => expense.amount)),
       currency: 'DOP',
     };
   }
