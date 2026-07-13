@@ -16,6 +16,8 @@ import { AssistantAlertsModule } from './modules/assistant-alerts/assistant-aler
 import { UsStockMarketInvestmentModule } from './modules/us-stock-market-investment/us-stock-market-investment.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { AssistantModule } from './modules/assistant/assistant.module';
+import { PrivacyModule } from './modules/privacy/privacy.module';
+import { FinancialNewsModule } from './modules/financial-news/financial-news.module';
 
 @Module({
   imports: [
@@ -55,6 +57,8 @@ import { AssistantModule } from './modules/assistant/assistant.module';
     UsStockMarketInvestmentModule,
     SubscriptionsModule,
     AssistantModule,
+    PrivacyModule,
+    FinancialNewsModule,
   ],
 })
 export class AppModule {}

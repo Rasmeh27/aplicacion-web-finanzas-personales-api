@@ -64,6 +64,21 @@ export interface BudgetsSummary {
   categoriesWithoutBudget: number;
 }
 
+export interface BudgetCompliancePeriod {
+  month: number;
+  year: number;
+  period: string;
+  totalBudgeted: number;
+  totalSpent: number;
+  totalRemaining: number;
+  overallUsagePct: number;
+  budgetsCount: number;
+  safeBudgetsCount: number;
+  warningBudgetsCount: number;
+  exceededBudgetsCount: number;
+  compliancePct: number;
+}
+
 interface BudgetUsage {
   spentAmount: number;
   remainingAmount: number;
@@ -218,6 +233,64 @@ export class BudgetsService {
       safeBudgetsCount: safe,
       categoriesWithoutBudget: await this.countExpenseCategoriesWithoutBudget(userId, budgets),
     };
+  }
+
+  async getComplianceHistory(userId: string, months = 12): Promise<BudgetCompliancePeriod[]> {
+    const safeMonths = Math.min(Math.max(Number(months) || 12, 1), 36);
+    const now = new Date();
+    const periods = Array.from({ length: safeMonths }, (_, index) => {
+      const cursor = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - index, 1));
+      return { year: cursor.getUTCFullYear(), month: cursor.getUTCMonth() + 1 };
+    }).reverse();
+
+    const history: BudgetCompliancePeriod[] = [];
+    for (const period of periods) {
+      const budgets = await this.budgetRepo.find({
+        where: {
+          userId,
+          periodMonth: this.buildPeriodMonth(period.year, period.month),
+        },
+        relations: ['category'],
+      });
+      const spentByCategory = await this.computeSpentByCategory(userId, period.year, period.month);
+
+      let totalBudgeted = 0;
+      let totalSpent = 0;
+      let safe = 0;
+      let warning = 0;
+      let exceeded = 0;
+
+      for (const budget of budgets) {
+        const spent = budget.categoryId ? spentByCategory.get(budget.categoryId) ?? 0 : 0;
+        const usage = this.calculateBudgetUsage(budget, spent);
+        totalBudgeted += Number(budget.limitAmount);
+        totalSpent += usage.spentAmount;
+        if (usage.status === 'exceeded') exceeded += 1;
+        else if (usage.status === 'warning') warning += 1;
+        else safe += 1;
+      }
+
+      totalBudgeted = this.round2(totalBudgeted);
+      totalSpent = this.round2(totalSpent);
+      const totalRemaining = this.round2(totalBudgeted - totalSpent);
+      const budgetsCount = budgets.length;
+
+      history.push({
+        ...period,
+        period: this.periodKey(period.year, period.month),
+        totalBudgeted,
+        totalSpent,
+        totalRemaining,
+        overallUsagePct: totalBudgeted > 0 ? this.round2((totalSpent / totalBudgeted) * 100) : 0,
+        budgetsCount,
+        safeBudgetsCount: safe,
+        warningBudgetsCount: warning,
+        exceededBudgetsCount: exceeded,
+        compliancePct: budgetsCount > 0 ? this.round2((safe / budgetsCount) * 100) : 0,
+      });
+    }
+
+    return history;
   }
 
   // --- Validaciones de negocio ---------------------------------------------

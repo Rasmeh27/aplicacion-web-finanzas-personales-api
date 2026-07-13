@@ -7,6 +7,9 @@ import {
   Bell,
   CheckCircle2,
   CreditCard,
+  FileDown,
+  FileSpreadsheet,
+  FileText,
   Loader2,
   Lock,
   LogOut,
@@ -14,6 +17,7 @@ import {
   Save,
   Shield,
   Trash2,
+  Upload,
   User,
   type LucideIcon,
 } from 'lucide-react';
@@ -24,7 +28,13 @@ import { PageHeader } from '@/shared/components/PageHeader';
 import { cn } from '@/shared/utils/cn';
 import { useAuthStore } from '@/store/slices/auth.store';
 import type { AuthUser } from '@/types/auth';
-import { profileService, type UserProfileResponse } from '../services/profile.service';
+import {
+  profileService,
+  type AccountExportResponse,
+  type UpdateUserPreferencesPayload,
+  type UserProfileResponse,
+} from '../services/profile.service';
+import { privacyService } from '../services/privacy.service';
 
 type CurrencyCode = 'DOP' | 'USD' | 'EUR';
 
@@ -33,6 +43,8 @@ type NotificationSettings = {
   weeklySummary: boolean;
   budgetAlerts: boolean;
   twoFactor: boolean;
+  marketingConsent: boolean;
+  dataProcessingConsentAt: string | null;
 };
 
 const CURRENCY_LABELS: Record<CurrencyCode, string> = {
@@ -79,6 +91,8 @@ const DEFAULT_SETTINGS: NotificationSettings = {
   weeklySummary: true,
   budgetAlerts: false,
   twoFactor: false,
+  marketingConsent: false,
+  dataProcessingConsentAt: null,
 };
 
 const SETTINGS_KEY = 'moni-profile-settings';
@@ -168,6 +182,262 @@ const formatMoney = (value: number | null | undefined, currency: string): string
     currency,
     maximumFractionDigits: 0,
   }).format(Number(value ?? 0));
+
+const downloadBlob = (fileName: string, blob: Blob) => {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+};
+
+const safeCell = (value: unknown): string => {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+};
+
+const csvCell = (value: unknown): string => `"${safeCell(value).replace(/"/g, '""')}"`;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const humanizeKey = (value: string): string =>
+  value
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+const formatExportDate = (value: string): string =>
+  new Intl.DateTimeFormat('es-DO', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
+
+const tableLabel = (table: string): string => {
+  const labels: Record<string, string> = {
+    movements: 'Movimientos',
+    categories: 'Categorías',
+    budgets: 'Presupuestos',
+    financial_goals: 'Metas financieras',
+    goal_contributions: 'Aportes a metas',
+    debts: 'Deudas',
+    debt_payments: 'Pagos de deudas',
+    assistant_sessions: 'Sesiones de Wallter',
+    assistant_messages: 'Mensajes de Wallter',
+    user_subscriptions: 'Suscripción',
+    privacy_settings: 'Privacidad',
+    privacy_consents: 'Consentimientos',
+    audit_logs: 'Auditoría',
+    notifications: 'Notificaciones',
+  };
+
+  return labels[table] ?? humanizeKey(table);
+};
+
+const flattenRecord = (row: unknown): Record<string, string> => {
+  if (!isRecord(row)) return { valor: safeCell(row) };
+
+  return Object.fromEntries(
+    Object.entries(row).map(([key, value]) => [
+      key,
+      isRecord(value) || Array.isArray(value) ? JSON.stringify(value) : safeCell(value),
+    ]),
+  );
+};
+
+const getTableColumns = (rows: unknown[]): string[] => {
+  const columns = new Set<string>();
+  rows.forEach((row) => {
+    Object.keys(flattenRecord(row)).forEach((key) => columns.add(key));
+  });
+  return Array.from(columns);
+};
+
+const buildCsvExport = (payload: AccountExportResponse): string => {
+  const lines = ['seccion,fila,campo,valor'];
+  Object.entries(payload.profile ?? {}).forEach(([field, value]) => {
+    lines.push(['perfil', '1', field, value].map(csvCell).join(','));
+  });
+
+  Object.entries(payload.data ?? {}).forEach(([table, rows]) => {
+    rows.forEach((row, index) => {
+      Object.entries(flattenRecord(row)).forEach(([field, value]) => {
+        lines.push([table, String(index + 1), field, value].map(csvCell).join(','));
+      });
+    });
+  });
+
+  return lines.join('\n');
+};
+
+const escapeHtml = (value: unknown): string =>
+  safeCell(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
+const buildExcelHtml = (payload: AccountExportResponse): string => {
+  const profileRows = Object.entries(payload.profile ?? {})
+    .map(([field, value]) => `<tr><td>${escapeHtml(humanizeKey(field))}</td><td>${escapeHtml(value)}</td></tr>`)
+    .join('');
+  const tableSections = Object.entries(payload.data ?? {})
+    .map(([table, rows]) => {
+      const columns = getTableColumns(rows);
+      const rowHtml = rows
+        .map((row, index) => {
+          const flat = flattenRecord(row);
+          return `<tr><td>${index + 1}</td>${columns
+            .map((column) => `<td>${escapeHtml(flat[column])}</td>`)
+            .join('')}</tr>`;
+        })
+        .join('');
+      const headerHtml = `<tr><th>#</th>${columns.map((column) => `<th>${escapeHtml(humanizeKey(column))}</th>`).join('')}</tr>`;
+      return `
+        <section class="sheet-section">
+          <h2>${escapeHtml(tableLabel(table))}</h2>
+          <p>${rows.length} registros</p>
+          <table>
+            <thead>${headerHtml}</thead>
+            <tbody>${rowHtml || `<tr><td colspan="${columns.length + 1}">Sin datos</td></tr>`}</tbody>
+          </table>
+        </section>
+      `;
+    })
+    .join('');
+
+  return `<!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; color: #0f172a; background: #f8fafc; padding: 24px; }
+          .hero { background: #4f46e5; color: white; padding: 24px; border-radius: 18px; margin-bottom: 24px; }
+          .hero h1 { margin: 0 0 8px; font-size: 28px; }
+          .hero p { margin: 0; color: #e0e7ff; }
+          .sheet-section { background: white; border: 1px solid #dbe3ef; border-radius: 14px; padding: 18px; margin-bottom: 22px; }
+          h2 { margin: 0 0 4px; font-size: 18px; color: #312e81; }
+          p { margin: 0 0 12px; color: #64748b; }
+          table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+          th { background: #eef2ff; color: #312e81; font-weight: 700; text-align: left; }
+          td, th { border: 1px solid #dbe3ef; padding: 8px 10px; vertical-align: top; word-wrap: break-word; font-size: 12px; }
+          tr:nth-child(even) td { background: #f8fafc; }
+        </style>
+      </head>
+      <body>
+        <div class="hero">
+          <h1>Exportación MONI</h1>
+          <p>Generado el ${escapeHtml(formatExportDate(payload.exportedAt))}</p>
+        </div>
+        <section class="sheet-section">
+          <h2>Perfil</h2>
+          <table><tbody>${profileRows}</tbody></table>
+        </section>
+        ${tableSections}
+      </body>
+    </html>`;
+};
+
+const buildPdfReport = (payload: AccountExportResponse): Blob => {
+  const normalizePdfText = (value: unknown): string =>
+    safeCell(value)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\x20-\x7E]/g, '')
+      .replace(/[()\\]/g, '\\$&');
+  const text = (value: unknown, x: number, y: number, size = 10, font = 'F1', color = '0 0 0') =>
+    `BT /${font} ${size} Tf ${color} rg ${x} ${y} Td (${normalizePdfText(value)}) Tj ET`;
+  const rect = (x: number, y: number, width: number, height: number, color: string) =>
+    `q ${color} rg ${x} ${y} ${width} ${height} re f Q`;
+  const summary = Object.entries(payload.data ?? {}).map(([table, rows]) => ({
+    label: tableLabel(table),
+    count: rows.length,
+  }));
+  const totalRecords = summary.reduce((total, item) => total + item.count, 0);
+  const topSections = summary.filter((item) => item.count > 0).slice(0, 10);
+  const profile = payload.profile ?? {};
+  const commands = [
+    rect(0, 0, 612, 792, '0.97 0.98 1'),
+    rect(0, 690, 612, 102, '0.31 0.27 0.90'),
+    text('MONI', 56, 748, 22, 'F2', '1 1 1'),
+    text('Exportacion de cuenta', 56, 724, 15, 'F1', '0.88 0.90 1'),
+    text(formatExportDate(payload.exportedAt), 386, 748, 10, 'F1', '0.88 0.90 1'),
+    rect(56, 604, 500, 54, '1 1 1'),
+    text('Usuario', 78, 635, 9, 'F1', '0.39 0.45 0.55'),
+    text(profile.fullName ?? 'No configurado', 78, 615, 15, 'F2', '0.02 0.04 0.10'),
+    text('Moneda', 368, 635, 9, 'F1', '0.39 0.45 0.55'),
+    text(profile.primaryCurrency ?? 'DOP', 368, 615, 15, 'F2', '0.02 0.04 0.10'),
+    rect(56, 520, 150, 58, '1 1 1'),
+    rect(231, 520, 150, 58, '1 1 1'),
+    rect(406, 520, 150, 58, '1 1 1'),
+    text('Registros totales', 76, 555, 9, 'F1', '0.39 0.45 0.55'),
+    text(totalRecords, 76, 535, 18, 'F2', '0.31 0.27 0.90'),
+    text('Secciones', 251, 555, 9, 'F1', '0.39 0.45 0.55'),
+    text(summary.length, 251, 535, 18, 'F2', '0.31 0.27 0.90'),
+    text('Correo', 426, 555, 9, 'F1', '0.39 0.45 0.55'),
+    text(profile.email ?? 'No disponible', 426, 538, 10, 'F2', '0.31 0.27 0.90'),
+    text('Resumen por modulo', 56, 480, 16, 'F2', '0.02 0.04 0.10'),
+    rect(56, 456, 500, 1, '0.86 0.89 0.94'),
+    ...topSections.flatMap((item, index) => {
+      const y = 430 - index * 28;
+      return [
+        text(item.label, 76, y, 11, 'F1', '0.02 0.04 0.10'),
+        text(`${item.count} registros`, 436, y, 11, 'F2', '0.31 0.27 0.90'),
+        rect(76, y - 10, 460, 0.7, '0.90 0.92 0.96'),
+      ];
+    }),
+  ];
+  const content = commands.join('\n');
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>',
+    `<< /Length ${content.length} >>\nstream\n${content}\nendstream`,
+  ];
+  let body = '%PDF-1.4\n';
+  const offsets = [0];
+  objects.forEach((object, index) => {
+    offsets.push(body.length);
+    body += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  });
+  const xrefOffset = body.length;
+  body += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  offsets.slice(1).forEach((offset) => {
+    body += `${String(offset).padStart(10, '0')} 00000 n \n`;
+  });
+  body += `trailer << /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  return new Blob([body], { type: 'application/pdf' });
+};
+
+const exportFileName = (extension: string): string => {
+  const stamp = new Date().toISOString().slice(0, 10);
+  return `moni-export-${stamp}.${extension}`;
+};
+
+const parseImportedProfile = (text: string, fileName: string): Partial<UpdateUserPreferencesPayload> => {
+  if (fileName.toLowerCase().endsWith('.json')) {
+    const parsed = JSON.parse(text) as { profile?: Partial<UpdateUserPreferencesPayload> } & Partial<UpdateUserPreferencesPayload>;
+    return parsed.profile ?? parsed;
+  }
+
+  const values: Record<string, string> = {};
+  text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .forEach((line) => {
+      const [field, ...rest] = line.split(',');
+      if (field && rest.length > 0) values[field.trim()] = rest.join(',').replace(/^"|"$/g, '').trim();
+    });
+
+  return values;
+};
 
 const normalizeProfile = (current: AuthUser, profile: UserProfileResponse): AuthUser => ({
   ...current,
@@ -346,6 +616,7 @@ export function ProfileView() {
   const setAuth = useAuthStore((state) => state.setAuth);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const syncedUserIdRef = useRef<string | null>(null);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
 
   const [settings, setSettings] = useState<NotificationSettings>(DEFAULT_SETTINGS);
   const [currency, setCurrency] = useState<CurrencyCode>(safeCurrency(user?.primaryCurrency));
@@ -372,6 +643,8 @@ export function ProfileView() {
   const [sendingPasswordReset, setSendingPasswordReset] = useState(false);
   const [passwordResetSent, setPasswordResetSent] = useState(false);
   const [passwordResetError, setPasswordResetError] = useState<string | null>(null);
+  const [exportingFormat, setExportingFormat] = useState<'json' | 'csv' | 'xls' | 'pdf' | null>(null);
+  const [importingProfile, setImportingProfile] = useState(false);
 
   const displayName = user?.fullName?.trim() || 'Usuario MONI';
   const displayEmail = user?.email ?? 'correo no disponible';
@@ -388,6 +661,17 @@ export function ProfileView() {
       window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     }
   }, [settings]);
+
+  useEffect(() => {
+    if (!accessToken) return;
+
+    privacyService
+      .getSettings()
+      .then((remoteSettings) => setSettings({ ...DEFAULT_SETTINGS, ...remoteSettings }))
+      .catch(() => {
+        setMessage('No se pudieron sincronizar las preferencias de privacidad. Se usarán los datos locales.');
+      });
+  }, [accessToken]);
 
   useEffect(() => {
     setCurrency(selectedCurrency);
@@ -435,8 +719,16 @@ export function ProfileView() {
       .finally(() => setLoadingProfile(false));
   }, [accessToken, refreshToken, setAuth, syncedUserIdRef, user]);
 
-  const updateSetting = (key: keyof NotificationSettings) => {
-    setSettings((current) => ({ ...current, [key]: !current[key] }));
+  const updateSetting = async (key: keyof Pick<NotificationSettings, 'emailNotifications' | 'weeklySummary' | 'budgetAlerts' | 'twoFactor' | 'marketingConsent'>) => {
+    const nextValue = !settings[key];
+    setSettings((current) => ({ ...current, [key]: nextValue }));
+
+    try {
+      const remoteSettings = await privacyService.updateSettings({ [key]: nextValue });
+      setSettings({ ...DEFAULT_SETTINGS, ...remoteSettings });
+    } catch {
+      setMessage('No se pudo guardar la preferencia en el servidor. El cambio queda temporal en este navegador.');
+    }
   };
 
   const openEditProfile = () => {
@@ -498,7 +790,7 @@ export function ProfileView() {
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
-      await authService.logout(refreshToken);
+      await authService.logout(accessToken, refreshToken);
     } catch {
       // El cierre local debe continuar aunque el servidor no responda.
     } finally {
@@ -539,6 +831,86 @@ export function ProfileView() {
       setPasswordResetError('No se pudo enviar el enlace de cambio de contraseña. Inténtalo nuevamente.');
     } finally {
       setSendingPasswordReset(false);
+    }
+  };
+
+  const handleExport = async (format: 'json' | 'csv' | 'xls' | 'pdf') => {
+    setExportingFormat(format);
+    setMessage(null);
+
+    try {
+      const payload = await profileService.exportAccountData();
+
+      if (format === 'json') {
+        downloadBlob(
+          exportFileName('json'),
+          new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' }),
+        );
+      }
+
+      if (format === 'csv') {
+        downloadBlob(exportFileName('csv'), new Blob([buildCsvExport(payload)], { type: 'text/csv;charset=utf-8' }));
+      }
+
+      if (format === 'xls') {
+        downloadBlob(
+          exportFileName('xls'),
+          new Blob([buildExcelHtml(payload)], { type: 'application/vnd.ms-excel;charset=utf-8' }),
+        );
+      }
+
+      if (format === 'pdf') {
+        downloadBlob(exportFileName('pdf'), buildPdfReport(payload));
+      }
+
+      setMessage('Exportación generada correctamente.');
+    } catch {
+      setMessage('No se pudo generar la exportación. Inténtalo nuevamente.');
+    } finally {
+      setExportingFormat(null);
+    }
+  };
+
+  const handleImportFile = async (file: File | null) => {
+    if (!file || !user) return;
+
+    setImportingProfile(true);
+    setMessage(null);
+
+    try {
+      const imported = parseImportedProfile(await file.text(), file.name);
+      const updated = await profileService.updatePreferences({
+        fullName: typeof imported.fullName === 'string' ? imported.fullName : user.fullName ?? undefined,
+        primaryCurrency: safeCurrency(imported.primaryCurrency ?? user.primaryCurrency),
+        country: typeof imported.country === 'string' ? imported.country : user.country ?? undefined,
+        timezone: typeof imported.timezone === 'string' ? imported.timezone : user.timezone ?? undefined,
+        phoneNumber: typeof imported.phoneNumber === 'string' ? imported.phoneNumber : user.phoneNumber ?? undefined,
+        monthlyIncomeEstimate: Number(imported.monthlyIncomeEstimate ?? user.monthlyIncomeEstimate ?? 0),
+        monthlyFixedExpenseEstimate: Number(imported.monthlyFixedExpenseEstimate ?? user.monthlyFixedExpenseEstimate ?? 0),
+        monthlyVariableExpenseEstimate: Number(imported.monthlyVariableExpenseEstimate ?? user.monthlyVariableExpenseEstimate ?? 0),
+        monthlySavingTargetAmount: Number(imported.monthlySavingTargetAmount ?? user.monthlySavingTargetAmount ?? 0),
+        monthlySavingTargetPct: Number(imported.monthlySavingTargetPct ?? user.monthlySavingTargetPct ?? 0),
+      });
+      setAuth(normalizeProfile(user, updated), accessToken, refreshToken);
+      setMessage('Perfil importado correctamente.');
+    } catch {
+      setMessage('No se pudo importar el archivo. Usa un JSON exportado por MONI o un CSV de campo,valor.');
+    } finally {
+      setImportingProfile(false);
+      if (importInputRef.current) importInputRef.current.value = '';
+    }
+  };
+
+  const handleRecordDataConsent = async () => {
+    setMessage(null);
+
+    try {
+      await privacyService.recordConsent('data_processing', true);
+      const remoteSettings = await privacyService.getSettings();
+      setSettings({ ...DEFAULT_SETTINGS, ...remoteSettings });
+      setMessage('Consentimiento de tratamiento de datos registrado.');
+    } catch {
+      setMessage('No se pudo registrar el consentimiento. Inténtalo nuevamente.');
     }
   };
 
@@ -630,7 +1002,7 @@ export function ProfileView() {
             title="Notificaciones por correo"
             description="Alertas de transacciones y metas"
             checked={settings.emailNotifications}
-            onToggle={() => updateSetting('emailNotifications')}
+            onToggle={() => void updateSetting('emailNotifications')}
           />
           <PreferenceRow
             icon={CreditCard}
@@ -638,7 +1010,7 @@ export function ProfileView() {
             title="Resumen semanal"
             description="Informe de gastos cada lunes"
             checked={settings.weeklySummary}
-            onToggle={() => updateSetting('weeklySummary')}
+            onToggle={() => void updateSetting('weeklySummary')}
           />
           <PreferenceRow
             icon={AlertTriangle}
@@ -646,7 +1018,7 @@ export function ProfileView() {
             title="Alertas de presupuesto"
             description="Aviso al llegar al 80% del límite"
             checked={settings.budgetAlerts}
-            onToggle={() => updateSetting('budgetAlerts')}
+            onToggle={() => void updateSetting('budgetAlerts')}
           />
         </SectionCard>
 
@@ -671,8 +1043,79 @@ export function ProfileView() {
             title="Autenticación en dos pasos"
             description="Añade una capa extra de seguridad"
             checked={settings.twoFactor}
-            onToggle={() => updateSetting('twoFactor')}
+            onToggle={() => void updateSetting('twoFactor')}
           />
+        </SectionCard>
+
+        <SectionCard icon={FileDown} title="Datos y privacidad">
+          <div className="border-t border-slate-100 px-5 py-4 sm:px-6">
+            <p className="text-sm leading-6 text-slate-500">
+              Exporta una copia de tu perfil y datos financieros. También puedes importar una configuración básica de perfil desde JSON o CSV.
+            </p>
+            <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-black text-slate-950">Consentimiento de datos</p>
+                  <p className="mt-1 text-xs font-semibold text-slate-400">
+                    {settings.dataProcessingConsentAt
+                      ? `Registrado el ${new Date(settings.dataProcessingConsentAt).toLocaleDateString('es-DO')}`
+                      : 'Pendiente de registro formal'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={Boolean(settings.dataProcessingConsentAt)}
+                  onClick={() => void handleRecordDataConsent()}
+                  className="inline-flex min-h-10 items-center justify-center rounded-xl border border-indigo-100 bg-white px-4 text-xs font-black text-indigo-700 transition hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {settings.dataProcessingConsentAt ? 'Registrado' : 'Registrar'}
+                </button>
+              </div>
+            </div>
+            <PreferenceRow
+              icon={Mail}
+              iconClassName="bg-indigo-50 text-indigo-600"
+              title="Comunicaciones comerciales"
+              description="Permite recibir novedades de MONI"
+              checked={settings.marketingConsent}
+              onToggle={() => void updateSetting('marketingConsent')}
+            />
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {[
+                { format: 'json' as const, label: 'Exportar JSON', icon: FileText },
+                { format: 'csv' as const, label: 'Exportar CSV', icon: FileSpreadsheet },
+                { format: 'xls' as const, label: 'Exportar Excel', icon: FileSpreadsheet },
+                { format: 'pdf' as const, label: 'Exportar PDF', icon: FileDown },
+              ].map(({ format, label, icon: Icon }) => (
+                <button
+                  key={format}
+                  type="button"
+                  disabled={exportingFormat !== null || importingProfile}
+                  onClick={() => void handleExport(format)}
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {exportingFormat === format ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
+                  {label}
+                </button>
+              ))}
+            </div>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".json,.csv,.txt"
+              className="hidden"
+              onChange={(event) => void handleImportFile(event.target.files?.[0] ?? null)}
+            />
+            <button
+              type="button"
+              disabled={exportingFormat !== null || importingProfile}
+              onClick={() => importInputRef.current?.click()}
+              className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-black text-white shadow-sm shadow-indigo-600/20 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {importingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              Importar perfil
+            </button>
+          </div>
         </SectionCard>
 
         <SectionCard icon={AlertTriangle} title="Zona de peligro">

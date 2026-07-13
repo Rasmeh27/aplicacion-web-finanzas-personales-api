@@ -9,9 +9,14 @@ import { cn } from '@/shared/utils/cn';
 import { formatCurrency } from '@/shared/utils/format-currency';
 import { useTranslation } from '@/shared/i18n/useTranslation';
 import type { TranslationKey } from '@/shared/i18n/translations';
-import { type DashboardPeriod } from '../utils/dashboard-data';
+import { getRecentDashboardTransactions, type DashboardPeriod } from '../utils/dashboard-data';
 import { transactionService } from '@/features/transactions/services/transaction.service';
 import { CLASSIFICATION_META, type Transaction } from '@/features/transactions/types';
+import {
+  financialProfileService,
+  type FinancialProfileResponse,
+} from '@/features/financial-profile/services/financial-profile.service';
+import type { AuthUser } from '@/types/auth';
 import type { RecentTransaction } from '../data/dashboard.mock';
 import { CategoryProgress } from './CategoryProgress';
 import { RecentTransactionsTable } from './RecentTransactionsTable';
@@ -61,6 +66,33 @@ type DashboardSummaryView = {
   monthlyIncome: number;
   monthlyExpenses: number;
   savingsRate: number;
+};
+
+const PERIOD_MULTIPLIER: Record<DashboardPeriod, number> = {
+  today: 1 / 30,
+  week: 7 / 30,
+  month: 1,
+  year: 12,
+};
+
+type DashboardProfile = Pick<
+  AuthUser,
+  | 'id'
+  | 'email'
+  | 'fullName'
+  | 'primaryCurrency'
+  | 'monthlyIncomeEstimate'
+  | 'monthlySavingTargetPct'
+  | 'monthlySavingTargetAmount'
+  | 'monthlyFixedExpenseEstimate'
+  | 'monthlyVariableExpenseEstimate'
+  | 'onboardingCompletedAt'
+  | 'onboardingVersion'
+>;
+
+const toNumber = (value: number | string | null | undefined): number => {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
 };
 
 const toDateString = (date: Date): string =>
@@ -221,15 +253,130 @@ const buildMonthlyEvolution = (transactions: Transaction[]) => {
   }));
 };
 
+const buildEstimatedDashboard = (profile: DashboardProfile | null, period: DashboardPeriod) => {
+  const multiplier = PERIOD_MULTIPLIER[period];
+  const monthlyIncome = toNumber(profile?.monthlyIncomeEstimate);
+  const monthlyFixedExpenses = toNumber(profile?.monthlyFixedExpenseEstimate);
+  const monthlyVariableExpenses = toNumber(profile?.monthlyVariableExpenseEstimate);
+  const monthlySavingTargetAmount = toNumber(profile?.monthlySavingTargetAmount);
+  const monthlySavingTargetPct = toNumber(profile?.monthlySavingTargetPct);
+  const monthlySavingTarget =
+    monthlySavingTargetAmount > 0
+      ? monthlySavingTargetAmount
+      : (monthlyIncome * monthlySavingTargetPct) / 100;
+
+  const income = monthlyIncome * multiplier;
+  const fixedExpenses = monthlyFixedExpenses * multiplier;
+  const variableExpenses = monthlyVariableExpenses * multiplier;
+  const expenses = fixedExpenses + variableExpenses;
+  const savingTarget = monthlySavingTarget * multiplier;
+  const balance = income - expenses;
+
+  const summary: DashboardSummaryView = {
+    balanceAvailable: balance,
+    monthlyIncome: income,
+    monthlyExpenses: expenses,
+    savingsRate: income > 0 ? Math.round((savingTarget / income) * 100) : 0,
+  };
+
+  return {
+    summary,
+    chartData: [
+      { label: 'Fijos', amount: fixedExpenses },
+      { label: 'Variables', amount: variableExpenses },
+      { label: 'Ahorro', amount: savingTarget },
+      { label: 'Balance', amount: Math.max(balance, 0) },
+    ].map((bar, _, bars) => ({
+      ...bar,
+      highlight: bar.amount > 0 && bar.amount === Math.max(...bars.map((item) => item.amount)),
+    })),
+    categoryData: [
+      { name: 'Gastos fijos estimados', amount: fixedExpenses },
+      { name: 'Gastos variables estimados', amount: variableExpenses },
+    ]
+      .filter((item) => item.amount > 0)
+      .map((item) => ({
+        ...item,
+        pct: expenses > 0 ? Math.round((item.amount / expenses) * 100) : 0,
+      })),
+  };
+};
+
+const buildEstimatedMonthlyEvolution = (profile: DashboardProfile | null) => {
+  const months = buildMonthlyEvolution([]);
+  if (!profile) return months;
+
+  const currentMonth = months[months.length - 1];
+  if (!currentMonth) return months;
+
+  const income = toNumber(profile.monthlyIncomeEstimate);
+  const expenses =
+    toNumber(profile.monthlyFixedExpenseEstimate) +
+    toNumber(profile.monthlyVariableExpenseEstimate);
+
+  return months.map((month) =>
+    month.key === currentMonth.key
+      ? {
+          ...month,
+          income,
+          expenses,
+          savings: Math.max(income - expenses, 0),
+        }
+      : month,
+  );
+};
+
+const normalizeDashboardProfile = (
+  profile: FinancialProfileResponse | null,
+  user: AuthUser | null,
+): DashboardProfile | null => {
+  const source = profile ?? user;
+  if (!source) return null;
+
+  return {
+    id: source.id,
+    email: user?.email ?? '',
+    fullName: source.fullName ?? user?.fullName ?? null,
+    primaryCurrency: source.primaryCurrency ?? user?.primaryCurrency ?? 'DOP',
+    monthlyIncomeEstimate: toNumber(source.monthlyIncomeEstimate),
+    monthlySavingTargetPct: toNumber(source.monthlySavingTargetPct),
+    monthlySavingTargetAmount:
+      source.monthlySavingTargetAmount === null || source.monthlySavingTargetAmount === undefined
+        ? null
+        : toNumber(source.monthlySavingTargetAmount),
+    monthlyFixedExpenseEstimate: toNumber(source.monthlyFixedExpenseEstimate),
+    monthlyVariableExpenseEstimate: toNumber(source.monthlyVariableExpenseEstimate),
+    onboardingCompletedAt: source.onboardingCompletedAt ?? user?.onboardingCompletedAt ?? null,
+    onboardingVersion: source.onboardingVersion ?? user?.onboardingVersion ?? 1,
+  };
+};
+
 export function DashboardOverview() {
   const { t } = useTranslation();
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const currency = user?.primaryCurrency ?? 'DOP';
+  const [profile, setProfile] = useState<FinancialProfileResponse | null>(null);
   const [activePeriod, setActivePeriod] = useState<DashboardPeriod>('month');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [registeredTransactions, setRegisteredTransactions] = useState<Transaction[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    financialProfileService
+      .getMyProfile()
+      .then((nextProfile) => {
+        if (!cancelled) setProfile(nextProfile);
+      })
+      .catch(() => {
+        if (!cancelled) setProfile(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const loadTransactions = useCallback(async () => {
     setTransactionsLoading(true);
@@ -261,8 +408,24 @@ export function DashboardOverview() {
     void loadTransactions();
   }, [loadTransactions]);
 
-  const realDashboard = useMemo(() => buildRealDashboard(transactions), [transactions]);
-  const monthlyEvolution = useMemo(() => buildMonthlyEvolution(registeredTransactions), [registeredTransactions]);
+  const dashboardProfile = useMemo(() => normalizeDashboardProfile(profile, user), [profile, user]);
+  const currency = dashboardProfile?.primaryCurrency ?? user?.primaryCurrency ?? 'DOP';
+  const hasPeriodTransactions = transactions.length > 0;
+  const hasAnyTransactions = registeredTransactions.length > 0;
+  const realDashboard = useMemo(
+    () =>
+      hasPeriodTransactions
+        ? buildRealDashboard(transactions)
+        : buildEstimatedDashboard(dashboardProfile, activePeriod),
+    [activePeriod, dashboardProfile, hasPeriodTransactions, transactions],
+  );
+  const monthlyEvolution = useMemo(
+    () =>
+      hasAnyTransactions
+        ? buildMonthlyEvolution(registeredTransactions)
+        : buildEstimatedMonthlyEvolution(dashboardProfile),
+    [dashboardProfile, hasAnyTransactions, registeredTransactions],
+  );
   const evolutionMax = useMemo(
     () => Math.max(...monthlyEvolution.flatMap((item) => [item.income, item.expenses, item.savings]), 1),
     [monthlyEvolution],
@@ -274,6 +437,10 @@ export function DashboardOverview() {
   const chartData = realDashboard.chartData;
   const categoryData = realDashboard.categoryData;
   const recentTransactions = useMemo(() => {
+    if (!registeredTransactions.length && dashboardProfile) {
+      return getRecentDashboardTransactions(dashboardProfile as AuthUser, activePeriod);
+    }
+
     return [...registeredTransactions]
       .sort((a, b) => {
         const createdDiff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -282,7 +449,7 @@ export function DashboardOverview() {
       })
       .slice(0, 6)
       .map(toRecentTransaction);
-  }, [registeredTransactions]);
+  }, [activePeriod, dashboardProfile, registeredTransactions]);
   return (
     <>
       <PageHeader

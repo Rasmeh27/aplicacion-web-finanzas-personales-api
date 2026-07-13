@@ -26,6 +26,12 @@ export type UserProfileResponse = Partial<AuthUser> & {
   updatedAt?: string;
 };
 
+export type AccountExportResponse = {
+  exportedAt: string;
+  profile: UserProfileResponse;
+  data: Record<string, unknown[]>;
+};
+
 export const profileService = {
   async getMe(): Promise<UserProfileResponse | null> {
     const { data } = await apiClient.get<UserProfileResponse | null>('/user/me');
@@ -34,6 +40,11 @@ export const profileService = {
 
   async updatePreferences(payload: UpdateUserPreferencesPayload): Promise<UserProfileResponse> {
     const { data } = await apiClient.patch<UserProfileResponse>('/user/me/preferences', payload);
+    return data;
+  },
+
+  async exportAccountData(): Promise<AccountExportResponse> {
+    const { data } = await apiClient.get<AccountExportResponse>('/user/me/export');
     return data;
   },
 

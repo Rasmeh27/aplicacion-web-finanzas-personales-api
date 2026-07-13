@@ -9,6 +9,16 @@ export const forgotPasswordSchema = z.object({
   email: z.string().min(1, 'El correo es obligatorio.').email('Ingresa un correo válido.'),
 });
 
+export const resetPasswordSchema = z
+  .object({
+    password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres.'),
+    confirmPassword: z.string().min(1, 'Confirma tu contraseña.'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    path: ['confirmPassword'],
+    message: 'Las contraseñas no coinciden.',
+  });
+
 export const registerSchema = z
   .object({
     fullName: z.string().trim().min(2, 'Ingresa tu nombre completo.'),
@@ -24,4 +34,5 @@ export const registerSchema = z
 
 export type LoginFormValues = z.infer<typeof loginSchema>;
 export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
 export type RegisterFormValues = z.infer<typeof registerSchema>;

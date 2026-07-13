@@ -87,6 +87,10 @@ export class UserService {
       'assistant_sessions',
       'assistant_messages',
       'user_subscriptions',
+      'privacy_settings',
+      'privacy_consents',
+      'audit_logs',
+      'notifications',
     ];
 
     const exported: Record<string, unknown[]> = {};
@@ -129,6 +133,10 @@ export class UserService {
         'categories',
         'planned_financial_items',
         'user_subscriptions',
+        'notifications',
+        'audit_logs',
+        'privacy_consents',
+        'privacy_settings',
       ];
 
       for (const table of tables) {
