@@ -37,7 +37,11 @@ export class ViewMonthlyIncomeTotalUseCase {
 
     return {
       periodMonth,
-      totalIncome: this.sumAmounts(incomes.map((income) => income.amount)),
+      // Se suma el monto ya convertido a moneda base (DOP); fallback a `amount`
+      // para filas antiguas aún sin convertir.
+      totalIncome: this.sumAmounts(
+        incomes.map((income) => income.amountBase ?? income.amount),
+      ),
       currency: 'DOP',
     };
   }

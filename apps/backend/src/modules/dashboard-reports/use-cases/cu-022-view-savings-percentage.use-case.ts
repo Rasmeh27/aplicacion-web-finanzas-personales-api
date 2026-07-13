@@ -63,7 +63,8 @@ export class ViewSavingsPercentageUseCase {
     return this.roundMoney(
       movements
         .filter((movement) => movement.type === type)
-        .reduce((total, movement) => total + Number(movement.amount), 0),
+        // Monto en moneda base (DOP); fallback a `amount` para filas sin convertir.
+        .reduce((total, movement) => total + Number(movement.amountBase ?? movement.amount), 0),
     );
   }
 
