@@ -17,4 +17,3 @@ export const useLocaleStore = create<LocaleState>()(
     { name: 'moni-locale' },
   ),
 );
-

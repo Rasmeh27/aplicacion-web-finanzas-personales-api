@@ -43,4 +43,3 @@ export function AuthShell({
     </main>
   );
 }
-

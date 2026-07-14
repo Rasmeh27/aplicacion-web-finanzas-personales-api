@@ -97,4 +97,3 @@ export class TransactionController {
     throw new UnauthorizedException('Authenticated user is required');
   }
 }
-

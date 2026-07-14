@@ -18,6 +18,7 @@ out/
 .env.backup*
 .env.*.backup*
 *.env.backup*
+.env.backup*
 
 # Logs
 *.log
