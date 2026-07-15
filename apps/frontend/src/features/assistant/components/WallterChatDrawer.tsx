@@ -55,6 +55,7 @@ const pickSafeMetadata = (metadata: unknown): AssistantSafeMetadata | undefined 
     rag_enabled: typeof m.rag_enabled === 'boolean' ? m.rag_enabled : undefined,
     financial_context_enabled:
       typeof m.financial_context_enabled === 'boolean' ? m.financial_context_enabled : undefined,
+    truncated: typeof m.truncated === 'boolean' ? m.truncated : undefined,
   };
 };
 
@@ -142,11 +143,15 @@ export function WallterChatDrawer() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, loading, isOpen]);
 
-  const send = async (question: string) => {
+  const send = async (question: string, options?: { isRetry?: boolean }) => {
     const trimmed = question.trim();
     if (!trimmed || loading) return;
 
-    appendMessage({ id: newId(), role: 'user', content: trimmed });
+    // On retry the user's question is already in the transcript (it was appended
+    // on the first attempt). Re-appending it would duplicate the bubble.
+    if (!options?.isRetry) {
+      appendMessage({ id: newId(), role: 'user', content: trimmed });
+    }
     setLoading(true);
     const controller = new AbortController();
     abortRef.current = controller;
@@ -167,6 +172,8 @@ export function WallterChatDrawer() {
         status: 'ok',
         metadata: pickSafeMetadata(res.metadata),
         qaFlags: detectAssistantLeaks(res.message ?? ''),
+        // Kept so a truncated (but successful) reply can also be retried.
+        retryQuestion: trimmed,
       });
     } catch (error) {
       if (axios.isCancel(error)) return; // user cancelled — no error bubble
@@ -297,7 +304,12 @@ export function WallterChatDrawer() {
             </div>
           ) : (
             messages.map((message: ChatMessage) => (
-              <AssistantMessageBubble key={message.id} message={message} dev={DEV} onRetry={send} />
+              <AssistantMessageBubble
+                key={message.id}
+                message={message}
+                dev={DEV}
+                onRetry={(question) => send(question, { isRetry: true })}
+              />
             ))
           )}
 

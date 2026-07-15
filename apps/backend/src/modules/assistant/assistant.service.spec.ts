@@ -237,6 +237,8 @@ describe('AssistantService (persistence)', () => {
         rag_enabled: false,
         financial_context_enabled: false,
         investment_context_enabled: false,
+        financial_context_fetch_failed: false,
+        truncated: false,
         llm_provider: 'mock',
         llm_model: 'mock-llm',
       });
@@ -246,15 +248,75 @@ describe('AssistantService (persistence)', () => {
       expect(storedMeta).not.toHaveProperty('user');
       expect(storedMeta).not.toHaveProperty('email');
 
-      // Al frontend se expone un subconjunto aun mas reducido.
+      // Al frontend se expone un subconjunto aun mas reducido (+ truncated para
+      // avisar respuestas incompletas). NUNCA financial_context_fetch_failed.
       expect(result.metadata).toEqual({
         request_id: 'ai-req-1',
         rag_enabled: false,
         financial_context_enabled: false,
         investment_context_enabled: false,
+        truncated: false,
       });
       expect(result.metadata).not.toHaveProperty('llm_provider');
       expect(result.metadata).not.toHaveProperty('allowed_scopes');
+      expect(result.metadata).not.toHaveProperty('financial_context_fetch_failed');
+      expect(result.metadata).not.toHaveProperty('finish_reason');
+    });
+
+    it('propaga truncated al frontend cuando el ai-service marca la respuesta cortada', async () => {
+      aiService.chat.mockResolvedValue(
+        aiResponse({
+          financial_context_enabled: true,
+          truncated: true,
+          finish_reason: 'length',
+        }),
+      );
+
+      const result = await service.chat(USER_A, undefined, { message: 'hola' });
+
+      // El frontend recibe truncated=true para avisar y ofrecer reintentar.
+      expect(result.metadata.truncated).toBe(true);
+      // finish_reason es diagnóstico interno: se persiste pero no se expone.
+      expect(result.metadata).not.toHaveProperty('finish_reason');
+
+      const assistantCreateArg = (messageRepo.create as unknown as jest.Mock).mock
+        .calls[1][0] as Partial<AssistantMessage>;
+      const storedMeta = assistantCreateArg.metadata as Record<string, unknown>;
+      expect(storedMeta.truncated).toBe(true);
+      expect(storedMeta.finish_reason).toBe('length');
+    });
+
+    it('persiste financial_context_fetch_failed pero NO lo expone al frontend', async () => {
+      aiService.chat.mockResolvedValue(
+        aiResponse({
+          financial_context_enabled: false,
+          financial_context_fetch_failed: true,
+        }),
+      );
+
+      const result = await service.chat(USER_A, undefined, {
+        message: '¿Cómo ves mis finanzas?',
+      });
+
+      const assistantCreateArg = (messageRepo.create as unknown as jest.Mock).mock
+        .calls[1][0] as Partial<AssistantMessage>;
+      const storedMeta = assistantCreateArg.metadata as Record<string, unknown>;
+      expect(storedMeta.financial_context_fetch_failed).toBe(true);
+      // El frontend nunca ve la causa interna del fallo.
+      expect(result.metadata).not.toHaveProperty('financial_context_fetch_failed');
+    });
+
+    it('no incluye user_id en el payload de logs (hash) ni en la respuesta', async () => {
+      aiService.chat.mockResolvedValue(aiResponse());
+
+      const result = await service.chat(USER_A, 'a@example.com', { message: 'hola' });
+
+      // El id real del usuario no viaja en la metadata expuesta.
+      expect(JSON.stringify(result.metadata)).not.toContain(USER_A);
+      // El payload al ai-service sí lleva el id (contrato interno), pero el email
+      // se resuelve en backend; el frontend nunca los envió.
+      const payload = aiService.chat.mock.calls[0][0];
+      expect(payload.user.id).toBe(USER_A);
     });
 
     it('cuando el resolver devuelve basic, el ai-service recibe scopes basic', async () => {
@@ -407,6 +469,7 @@ describe('AssistantService (persistence)', () => {
         rag_enabled: false,
         financial_context_enabled: false,
         investment_context_enabled: false,
+        truncated: false,
       });
     });
 

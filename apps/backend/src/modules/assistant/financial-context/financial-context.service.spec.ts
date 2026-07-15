@@ -119,6 +119,36 @@ describe('FinancialContextService', () => {
     service = module.get(FinancialContextService);
   });
 
+  it('aísla por user_id: TODAS las consultas se filtran por el usuario del request', async () => {
+    // Fase 6 #1: el usuario A jamás puede recibir datos del usuario B. La única
+    // fuente del id es el request (que nació del JWT en el backend). Verificamos
+    // que cada repositorio se consulta con ese user_id y ningún otro.
+    txRepo.find.mockResolvedValue([tx({ amount: 1000, categoryId: 'cat-1' })] as never);
+    categoryRepo.find.mockResolvedValue([{ id: 'cat-1', name: 'Comida' }] as never);
+    budgetRepo.find.mockResolvedValue([] as never);
+    goalRepo.find.mockResolvedValue([] as never);
+
+    await service.buildFinancialContext(baseRequest());
+
+    const whereUserIdOf = (mock: jest.Mock) =>
+      (mock.mock.calls[0][0] as { where: { userId: string } }).where.userId;
+
+    expect((userRepo.findOne.mock.calls[0][0] as { where: { id: string } }).where.id).toBe(
+      USER_ID,
+    );
+    expect(whereUserIdOf(txRepo.find)).toBe(USER_ID);
+    expect(whereUserIdOf(budgetRepo.find)).toBe(USER_ID);
+    expect(whereUserIdOf(goalRepo.find)).toBe(USER_ID);
+    expect(whereUserIdOf(categoryRepo.find)).toBe(USER_ID);
+
+    // Ningún filtro usó un id distinto al del request.
+    for (const mock of [txRepo.find, budgetRepo.find, goalRepo.find, categoryRepo.find]) {
+      for (const call of mock.mock.calls) {
+        expect((call[0] as { where: { userId: string } }).where.userId).toBe(USER_ID);
+      }
+    }
+  });
+
   it('devuelve 404 si el user_id no existe', async () => {
     userRepo.findOne.mockResolvedValue(null as never);
     await expect(service.buildFinancialContext(baseRequest())).rejects.toThrow(

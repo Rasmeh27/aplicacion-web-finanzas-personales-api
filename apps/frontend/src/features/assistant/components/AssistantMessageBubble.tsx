@@ -28,6 +28,7 @@ export function AssistantMessageBubble({
   }
 
   const isError = message.status === 'error';
+  const isTruncated = !isError && message.metadata?.truncated === true;
   const flags = message.qaFlags ?? [];
 
   return (
@@ -56,17 +57,29 @@ export function AssistantMessageBubble({
           </span>
         ) : null}
 
-        {isError && message.retryQuestion ? (
+        {(isError || isTruncated) && message.retryQuestion ? (
           <button
             type="button"
             onClick={() => onRetry(message.retryQuestion as string)}
-            className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-rose-600 transition hover:bg-rose-50"
+            className={cn(
+              'inline-flex items-center gap-1 rounded-full border bg-white px-2 py-0.5 text-[11px] font-semibold transition',
+              isError
+                ? 'border-rose-200 text-rose-600 hover:bg-rose-50'
+                : 'border-amber-300 text-amber-700 hover:bg-amber-50',
+            )}
           >
             <RefreshCw className="h-3 w-3" />
             Reintentar
           </button>
         ) : null}
       </div>
+
+      {isTruncated ? (
+        <div className="flex items-start gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-700">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>La respuesta quedó incompleta. Puedes reintentar para verla completa.</span>
+        </div>
+      ) : null}
 
       {dev && flags.length > 0 ? (
         <div className="flex items-start gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-700">

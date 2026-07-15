@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { Repository } from 'typeorm';
 import { AiServiceClient } from './clients/ai-service.client';
 import { AssistantChatRequestDto } from './dto/assistant-chat-request.dto';
@@ -37,6 +37,11 @@ const STORABLE_METADATA_KEYS = [
   'rag_enabled',
   'financial_context_enabled',
   'investment_context_enabled',
+  // Señales de diagnóstico (booleanos/strings, sin PII): truncación de la
+  // respuesta y si la obtención del contexto financiero falló (fail-open).
+  'financial_context_fetch_failed',
+  'finish_reason',
+  'truncated',
   'llm_provider',
   'llm_model',
 ] as const;
@@ -102,7 +107,8 @@ export class AssistantService {
     };
 
     this.logger.log(
-      `assistant.chat start request_id=${requestId} session_id=${session.id} user_id=${userId} plan=${plan}`,
+      `assistant.chat start request_id=${requestId} session_id=${session.id} ` +
+        `user_hash=${this.hashUserId(userId)} plan=${plan}`,
     );
     const startedAt = Date.now();
 
@@ -113,10 +119,13 @@ export class AssistantService {
       // El mensaje del usuario ya quedó guardado; NO guardamos respuesta del
       // asistente. Se relanza el error de gateway ya saneado por el client.
       this.logger.warn(
-        `assistant.chat failed request_id=${requestId} session_id=${session.id} status=error duration_ms=${Date.now() - startedAt}`,
+        `assistant.chat failed request_id=${requestId} session_id=${session.id} ` +
+          `status=error ai_latency_ms=${Date.now() - startedAt} ` +
+          `reason=${(error as Error)?.name ?? 'unknown'}`,
       );
       throw error;
     }
+    const aiLatencyMs = Date.now() - startedAt;
 
     const storedMetadata = this.sanitizeAiMetadata(result.metadata, requestId);
 
@@ -140,8 +149,14 @@ export class AssistantService {
       { updatedAt: new Date() },
     );
 
+    // Log de diagnóstico (Fase 4): sin importes, sin mensaje, sin PII. El
+    // user_id va hasheado; solo banderas y tamaños agregados.
     this.logger.log(
-      `assistant.chat done request_id=${requestId} session_id=${session.id} status=ok duration_ms=${Date.now() - startedAt}`,
+      `assistant.chat done request_id=${requestId} session_id=${session.id} status=ok ` +
+        `ai_latency_ms=${aiLatencyMs} response_chars=${result.message?.length ?? 0} ` +
+        `financial_context_present=${storedMetadata.financial_context_enabled === true} ` +
+        `financial_context_fetch_failed=${storedMetadata.financial_context_fetch_failed === true} ` +
+        `truncated=${storedMetadata.truncated === true}`,
     );
 
     return {
@@ -150,6 +165,14 @@ export class AssistantService {
       session_id: session.id,
       metadata: this.toClientMetadata(storedMetadata),
     };
+  }
+
+  /**
+   * Hash corto y estable del user_id para logs. No reversible sin fuerza bruta
+   * del espacio de UUIDs; suficiente para correlacionar sin exponer el id real.
+   */
+  private hashUserId(userId: string): string {
+    return createHash('sha256').update(userId).digest('hex').slice(0, 12);
   }
 
   /** Lista las sesiones ACTIVAS del usuario, más recientes primero. */
@@ -272,6 +295,10 @@ export class AssistantService {
     if (clean.investment_context_enabled === undefined) {
       clean.investment_context_enabled = false;
     }
+    if (clean.financial_context_fetch_failed === undefined) {
+      clean.financial_context_fetch_failed = false;
+    }
+    if (clean.truncated === undefined) clean.truncated = false;
     return clean;
   }
 
@@ -284,6 +311,10 @@ export class AssistantService {
       rag_enabled: stored.rag_enabled ?? false,
       financial_context_enabled: stored.financial_context_enabled ?? false,
       investment_context_enabled: stored.investment_context_enabled ?? false,
+      // Permite al frontend avisar que la respuesta quedó incompleta y ofrecer
+      // reintentar. NO se expone financial_context_fetch_failed ni finish_reason
+      // (diagnóstico interno).
+      truncated: stored.truncated ?? false,
     };
   }
 

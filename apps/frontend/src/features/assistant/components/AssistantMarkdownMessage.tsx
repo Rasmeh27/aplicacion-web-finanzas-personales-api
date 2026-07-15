@@ -19,11 +19,29 @@ type Block =
   | { type: 'heading'; level: number; text: string }
   | { type: 'ul'; items: string[] }
   | { type: 'ol'; items: string[] }
+  | { type: 'code'; lines: string[] }
   | { type: 'p'; lines: string[] };
 
 const HEADING_RE = /^(#{1,6})\s+(.*)$/;
 const UL_RE = /^\s*[-*•]\s+(.*)$/;
 const OL_RE = /^\s*\d+[.)]\s+(.*)$/;
+const CODE_FENCE_RE = /^```(.*)$/;
+
+// Language tags that mean the model wrapped the WHOLE reply in a fence as a
+// formatting artifact (not intentional code). Mirrors the ai-service cleanup so
+// old/edge messages never show literal ```markdown to the user.
+const WRAPPER_FENCE_LANGS = new Set(['', 'markdown', 'md', 'text', 'plaintext']);
+
+function stripWrappingCodeFence(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith('```') || !trimmed.endsWith('```')) return text;
+  if ((trimmed.match(/```/g) ?? []).length !== 2) return text; // embedded code -> keep
+  const firstNewline = trimmed.indexOf('\n');
+  if (firstNewline === -1) return text;
+  const lang = trimmed.slice(3, firstNewline).trim().toLowerCase();
+  if (!WRAPPER_FENCE_LANGS.has(lang)) return text; // real ```python etc. -> keep
+  return trimmed.slice(firstNewline + 1, trimmed.lastIndexOf('```')).trim();
+}
 // Inline: `code` | **bold**/__bold__ | *italic*/_italic_ | [text](http(s)://url)
 const INLINE_RE =
   /(`[^`]+`)|(\*\*[^*]+\*\*|__[^_]+__)|(\*[^*\s][^*]*\*|_[^_\s][^_]*_)|(\[[^\]]+\]\(https?:\/\/[^)\s]+\))/g;
@@ -33,6 +51,9 @@ function parseBlocks(source: string): Block[] {
   const blocks: Block[] = [];
   let paragraph: string[] = [];
 
+  let inCode = false;
+  let code: string[] = [];
+
   const flushParagraph = () => {
     if (paragraph.length) {
       blocks.push({ type: 'p', lines: paragraph });
@@ -41,6 +62,22 @@ function parseBlocks(source: string): Block[] {
   };
 
   for (const line of lines) {
+    // Fenced code block: toggle in/out on ``` lines; content is kept verbatim.
+    if (CODE_FENCE_RE.test(line.trim())) {
+      if (inCode) {
+        blocks.push({ type: 'code', lines: code });
+        code = [];
+        inCode = false;
+      } else {
+        flushParagraph();
+        inCode = true;
+      }
+      continue;
+    }
+    if (inCode) {
+      code.push(line);
+      continue;
+    }
     if (!line.trim()) {
       flushParagraph();
       continue;
@@ -69,6 +106,8 @@ function parseBlocks(source: string): Block[] {
     }
     paragraph.push(line);
   }
+  // An unterminated code fence still renders its captured lines as code.
+  if (inCode && code.length) blocks.push({ type: 'code', lines: code });
   flushParagraph();
   return blocks;
 }
@@ -131,7 +170,7 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
 }
 
 export function AssistantMarkdownMessage({ content }: { content: string }) {
-  const blocks = parseBlocks(content ?? '');
+  const blocks = parseBlocks(stripWrappingCodeFence(content ?? ''));
 
   return (
     <div className="space-y-2 text-sm leading-relaxed text-slate-800">
@@ -160,6 +199,16 @@ export function AssistantMarkdownMessage({ content }: { content: string }) {
                 <li key={itemIndex}>{renderInline(item, `ol-${index}-${itemIndex}`)}</li>
               ))}
             </ol>
+          );
+        }
+        if (block.type === 'code') {
+          return (
+            <pre
+              key={index}
+              className="overflow-x-auto rounded-lg bg-slate-900 px-3 py-2 text-xs text-slate-100"
+            >
+              <code className="font-mono">{block.lines.join('\n')}</code>
+            </pre>
           );
         }
         return (

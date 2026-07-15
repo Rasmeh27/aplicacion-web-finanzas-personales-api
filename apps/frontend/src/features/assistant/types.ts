@@ -5,6 +5,8 @@ export type AssistantSafeMetadata = {
   request_id?: string;
   rag_enabled?: boolean;
   financial_context_enabled?: boolean;
+  /** True when the reply hit the model token limit and is incomplete. */
+  truncated?: boolean;
 };
 
 /** Response shape of `POST /api/v1/assistant/chat` (backend -> frontend). */
