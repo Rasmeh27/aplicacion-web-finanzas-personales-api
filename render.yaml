@@ -1,0 +1,67 @@
+# yaml-language-server: $schema=https://render.com/schema/render.yaml.json
+
+# MONI - Render Blueprint del monorepo Node.
+# El servicio FastAPI vive en github.com/Rasmeh27/asistente-financiero-moni y
+# se crea por separado. Supabase es externo. No se crean Postgres ni Redis.
+
+services:
+  - type: web
+    name: moni-api
+    runtime: node
+    plan: starter
+    branch: main
+    buildCommand: npm ci && npm run build --workspace=@smartwallet/backend
+    startCommand: node apps/backend/dist/main.js
+    healthCheckPath: /health/ready
+    autoDeployTrigger: off
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22.23.1"
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_SSL
+        value: "true"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: ENABLE_SWAGGER
+        value: "false"
+      - key: MARKET_DATA_PROVIDER
+        sync: false
+      - key: ALPHA_VANTAGE_API_KEY
+        sync: false
+      - key: TWELVE_DATA_API_KEY
+        sync: false
+      - key: AI_SERVICE_BASE_URL
+        sync: false
+      - key: AI_SERVICE_INTERNAL_API_KEY
+        sync: false
+      - key: BACKEND_INTERNAL_API_KEY
+        sync: false
+
+  - type: web
+    name: moni-web
+    runtime: node
+    plan: starter
+    branch: main
+    buildCommand: npm ci && npm run build --workspace=@smartwallet/frontend
+    startCommand: npm run start --workspace=@smartwallet/frontend
+    healthCheckPath: /api/health
+    autoDeployTrigger: off
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22.23.1"
+      # Se incrusta durante next build y debe terminar en /api/v1.
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+      - key: NEXT_PUBLIC_PREMIUM_CHECKOUT_URL
+        sync: false

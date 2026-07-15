@@ -6,7 +6,7 @@ Plataforma web de finanzas personales con AI Assistant.
 
 | Capa | Tecnologia |
 |------|------------|
-| Frontend | Next.js 14, React, Tailwind CSS |
+| Frontend | Next.js 15.5, React 18, Tailwind CSS |
 | Backend | NestJS, TypeORM, Passport JWT |
 | Base de datos | PostgreSQL 16 / Supabase |
 | Cache | Redis 7 |
